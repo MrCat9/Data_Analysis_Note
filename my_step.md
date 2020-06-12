@@ -199,49 +199,6 @@ df.sort_values(by=['xx_col'], na_position='first')
 df['f1'].value_counts()
 ```
 
-### 空值nan的处理规则
-
-1. nan存在的个数如果很小一般选择填充。
-2. 如果nan存在的过多、可以考虑删掉。
-3. 如果使用lgb等树模型可以直接空缺，让树自己去优化。
-
-### 训练机器学习模型进行空值填充
-
-使用无空值的行作为训练集，训练模型，预测有空值的行的空值。
-
-### 选取没有空值的行
-
-```python
-mask = pd.notna(df['t1'])
-df[mask]
-```
-
-### dropna删除有空值的行
-
-```python
-df.dropna(axis=0, how='any', inplace=True)
-```
-
-### 把 col_a 中的空值用 col_b 的值替换（df的修改操作）
-
-```python
-df.loc[:, 'col_a'].replace(to_replace=np.nan, value=df.loc[:, 'col_b'], inplace=True)
-```
-
-### 删除 df 的行或列
-
-```python
-# 删除行
-df.drop([1, 3], axis=0, inplace=False)  # 删除index值为1和3的两行
-```
-
-```python
-# 删除列
-df.drop(['f1'], axis=1, inplace=True)  # 删除f1列
-del df['f2']  # 删除f2列
-df_f3 = df.pop('f3')  # 删除df的f3列，f3列的值返回给df_f3
-```
-
 ### 折线图
 
 可以考虑将t1随日变化的折线图和t1随月变化的折线图画在一张图里。
@@ -522,29 +479,6 @@ for col in numeric_features:
           'Kurtosis: {:06.2f}'.format(df[col].kurt()))
 ```
 
-### 去掉3个标准差以外数据 （认为是异常值）
-
-```python
-mask = np.abs(df['t1'] - df['t1'].mean()) <= (3 * df['t1'].std())
-df2 = df[mask]
-df3 = df[~mask]
-```
-
-### 不是正态分布
-
-```python
-# 数据波动大的话容易产生过拟合
-# 所以对数据进行变换，使得数据相对稳定
-# 可以选择对数变换
-train_y = df['t1']
-sns.distplot(train_y)
-plt.show()
-
-train_y_log = np.log(train_y)
-sns.distplot(train_y_log)
-plt.show()
-```
-
 ### FacetGrid
 
 sns.FacetGrid() https://blog.csdn.net/weixin_42398658/article/details/82960379
@@ -679,6 +613,72 @@ pfr.to_file("example.html")
 2. 全面性：观察某一列的全部数值，通过常识来判断该列是否有问题，比如：数据定义、单位标识、数据本身。
 3. 合法性：数据的类型、内容、大小的合法性。比如数据中是否存在非ASCII字符，性别存在了未知，年龄超过了150等。
 4. 唯一性：数据是否存在重复记录，因为数据通常来自不同渠道的汇总，重复的情况是常见的。行数据、列数据都需要是唯一的。
+
+### 空值nan的处理规则
+
+1. nan存在的个数如果很小一般选择填充。
+2. 如果nan存在的过多、可以考虑删掉。
+3. 如果使用lgb等树模型可以直接空缺，让树自己去优化。
+
+### 训练机器学习模型进行空值填充
+
+使用无空值的行作为训练集，训练模型，预测有空值的行的空值。
+
+### 选取没有空值的行
+
+```python
+mask = pd.notna(df['t1'])
+df[mask]
+```
+
+### dropna删除有空值的行
+
+```python
+df.dropna(axis=0, how='any', inplace=True)
+```
+
+### 删除 df 的行或列
+
+```python
+# 删除行
+df.drop([1, 3], axis=0, inplace=False)  # 删除index值为1和3的两行
+```
+
+```python
+# 删除列
+df.drop(['f1'], axis=1, inplace=True)  # 删除f1列
+del df['f2']  # 删除f2列
+df_f3 = df.pop('f3')  # 删除df的f3列，f3列的值返回给df_f3
+```
+
+### 把 col_a 中的空值用 col_b 的值替换（df的修改操作）
+
+```python
+df.loc[:, 'col_a'].replace(to_replace=np.nan, value=df.loc[:, 'col_b'], inplace=True)
+```
+
+### 去掉3个标准差以外数据 （认为是异常值）
+
+```python
+mask = np.abs(df['t1'] - df['t1'].mean()) <= (3 * df['t1'].std())
+df2 = df[mask]
+df3 = df[~mask]
+```
+
+### 不是正态分布
+
+```python
+# 数据波动大的话容易产生过拟合
+# 所以对数据进行变换，使得数据相对稳定
+# 可以选择对数变换
+train_y = df['t1']
+sns.distplot(train_y)
+plt.show()
+
+train_y_log = np.log(train_y)
+sns.distplot(train_y_log)
+plt.show()
+```
 
 ### tsfresh时间序列特征工程工具
 
