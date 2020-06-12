@@ -41,21 +41,16 @@ df = train_df.append(test_df)
 
 
 
-## 数据探索与清洗
-
-### 数据清洗的“完全合一”规则
-
-1. 完整性：单条数据是否存在空值，统计的字段是否完善。
-2. 全面性：观察某一列的全部数值，通过常识来判断该列是否有问题，比如：数据定义、单位标识、数据本身。
-3. 合法性：数据的类型、内容、大小的合法性。比如数据中是否存在非ASCII字符，性别存在了未知，年龄超过了150等。
-4. 唯一性：数据是否存在重复记录，因为数据通常来自不同渠道的汇总，重复的情况是常见的。行数据、列数据都需要是唯一的。
+## 数据探索
 
 ### 查看形状
+
 ```python
 df.shape
 ```
 
 ### 查看几行
+
 ```python
 df
 df.head()
@@ -63,11 +58,13 @@ df.tail()
 ```
 
 ### 查看是否有重复的记录
+
 ```python
 df.duplicated()
 ```
 
 ### 获取数据的描述统计信息
+
 ```python
 df.describe()
 ```
@@ -83,11 +80,13 @@ std=\sqrt{\frac{1}{N-1}\sum_{i=1}^N (x_i-\mu)^2}
 $$
 
 ### 查看数据类型、是否有空值
+
 ```python
 df.info()
 ```
 
 ### 检查每一列
+
 ```python
 for col_name in df.columns:
     print(col_name)
@@ -99,11 +98,13 @@ for col_name in df.columns:
 ```
 
 ### 列数据类型转换
+
 ```python
 df[['str_col']].astype('float64')
 ```
 
 ### 强制类型转换 
+
 ```python
 pd.to_numeric(customerDF['str_col'], errors='coerce')  # errors='coerce' -> 将无效解析设置为NaN
 
@@ -111,7 +112,36 @@ df['date_datetime'] = pd.to_datetime(df['date_str'])
 df['date'] = pd.to_datetime(df[['year', 'month', 'day']])
 ```
 
+### 类别特征的列转为category数据类型
+
+```python
+categorical_features = [
+    'f1', 'f2', 'f3', 'f4', 'f5', 'f6'
+]
+for c in categorical_features:
+    if df[c].isnull().any():
+        df[c] = df[c].fillna('MISSING')
+    df[c] = df[c].astype('category')
+```
+
+### 根据列的数据类型选择列
+
+有时候需要人为根据实际含义来区分`数字特征`和`类型特征`
+
+```python
+df.select_dtypes(exclude='object')
+
+# 数字特征
+numeric_features = df.select_dtypes(include=[np.number])
+numeric_features.columns
+
+# 类型特征
+categorical_features = df.select_dtypes(include=[np.object])
+categorical_features.columns
+```
+
 ### 日期时间处理
+
 ```python
 df['datetime_col'] = pd.to_datetime(df['datetime_col'], format='%Y-%m-%d %H:%M:%S')  # 列数据类型转换
 
@@ -131,6 +161,7 @@ df['weekday'] = df['datetime_col'].dt.weekday  # 星期
 ```
 
 ### 空值统计
+
 ```python
 pd.isna(df).sum()
 df.isna().sum()
@@ -140,6 +171,7 @@ df.notna()
 ```
 
 ### missingno空值可视化处理
+
 ```python
 import missingno as msno  # pip install missingno
 msno.matrix(df, labels=True)  # DataFrame的无效性的矩阵可视化
@@ -150,16 +182,19 @@ msno.heatmap(data)  # 空值间的相关性热力图
 https://blog.csdn.net/Andy_shenzl/article/details/81633356
 
 ### 查看 xx_col 列有空值的行
+
 ```python
 df[df['xx_col'].isnull().values == True]
 ```
 
 ### 排序
+
 ```python
 df.sort_values(by=['xx_col'], na_position='first')
 ```
 
 ### 对某一列的值进行计数
+
 ```python
 df['f1'].value_counts()
 ```
@@ -175,22 +210,26 @@ df['f1'].value_counts()
 使用无空值的行作为训练集，训练模型，预测有空值的行的空值。
 
 ### 选取没有空值的行
+
 ```python
 mask = pd.notna(df['t1'])
 df[mask]
 ```
 
 ### dropna删除有空值的行
+
 ```python
 df.dropna(axis=0, how='any', inplace=True)
 ```
 
 ### 把 col_a 中的空值用 col_b 的值替换（df的修改操作）
+
 ```python
 df.loc[:, 'col_a'].replace(to_replace=np.nan, value=df.loc[:, 'col_b'], inplace=True)
 ```
 
 ### 删除 df 的行或列
+
 ```python
 # 删除行
 df.drop([1, 3], axis=0, inplace=False)  # 删除index值为1和3的两行
@@ -223,14 +262,39 @@ ax.set_title('this is title')
 ### 柱形图
 
 ```python
-# 查看t1的频数
+# 查看t1（数值型）的频数
 plt.hist(df['t1'], orientation='vertical', histtype='bar', color='red')
 ```
 
+```python
+# 类别特征的每个类别频数可视化(countplot)
+def count_plot(x,  **kwargs):
+    sns.countplot(x=x)
+    x=plt.xticks(rotation=90)
+
+
+f = pd.melt(df, value_vars=categorical_features)
+g = sns.FacetGrid(f, col="variable",  col_wrap=2, sharex=False, sharey=False, size=5)
+g = g.map(count_plot, "value")
+```
+
+```python
+# 类别特征的柱形图可视化  # 每个类的t1值的平均值
+def bar_plot(x, y, **kwargs):
+    sns.barplot(x=x, y=y)
+    x=plt.xticks(rotation=90)
+
+
+f = pd.melt(df, id_vars=['t1'], value_vars=categorical_features)
+g = sns.FacetGrid(f, col="variable", col_wrap=2, sharex=False, sharey=False, size=5)
+g = g.map(bar_plot, "value", "t1")
+```
+
 ### 圆饼图
+
 ```python
 import matplotlib.pyplot as plt
-# plt.rcParams['font.sans-serif']=['SimHei']  # 用来正常显示中文标签
+# plt.rcParams['font.sans-serif'] = ['SimHei']  # 用来正常显示中文标签
 labels = ['t1', 't2', 't3', 't4', 't5', 't6']
 sizes = [2, 5, 12, 70, 2, 9]  # 数值
 explode = (0, 0, 0, 0.1, 0, 0)
@@ -272,6 +336,7 @@ rotatelabels ：布尔类型，可选参数，默认为：False。如果为True�
 ```
 
 ### 箱型图
+
 ```python
 fig, axes = plt.subplots(1, 3)
 fig.set_size_inches(12, 6)
@@ -288,15 +353,59 @@ axes[2].set(xlabel='f3')
 fig, axes = plt.subplots(2, 2)
 fig.set_size_inches(15, 12)
 
-sns.boxplot(x='season', y='count', data=df, orient='v', width=0.6, ax=axes[0, 0])
-sns.boxplot(x='holiday', y='count', data=df, orient='v', width=0.6, ax=axes[0, 1])
-sns.boxplot(x='workingday', y='count', data=df, orient='v', width=0.6, ax=axes[1, 0])
-sns.boxplot(x='weather', y='count', data=df, orient='v', width=0.6, ax=axes[1, 1])
+sns.boxplot(x='f1', y='t1', data=df, orient='v', width=0.6, ax=axes[0, 0])
+sns.boxplot(x='f2', y='t1', data=df, orient='v', width=0.6, ax=axes[0, 1])
+sns.boxplot(x='f3', y='t1', data=df, orient='v', width=0.6, ax=axes[1, 0])
+sns.boxplot(x='f4', y='t1', data=df, orient='v', width=0.6, ax=axes[1, 1])
+```
+
+```python
+sns.boxplot(x=df['f1'], y=df['t1'])
+plt.xticks(rotation=90)  # x轴标签逆时针旋转90°
 ```
 
 ```python
 df.boxplot(['f1', 'f2'])
 ```
+
+```python
+# 类别特征箱形图可视化
+categorical_features = [
+    'f1', 'f2', 'f3', 'f4', 'f5', 'f6'
+]
+for c in categorical_features:
+    if df[c].isnull().any():
+        df[c] = df[c].fillna('MISSING')
+    df[c] = df[c].astype('category')
+
+
+def boxplot(x, y, **kwargs):
+    sns.boxplot(x=x, y=y)
+    x = plt.xticks(rotation=90)  # x轴标签逆时针旋转90°
+
+
+f = pd.melt(df, id_vars=['t1'], value_vars=categorical_features)
+g = sns.FacetGrid(f,
+                  col="variable",
+                  col_wrap=2,
+                  sharex=False,
+                  sharey=False,
+                  size=5)
+g.map(boxplot, "value", "t1")
+```
+
+### 小提琴图
+
+```python
+# 类别特征的小提琴图可视化
+catg_list = categorical_features
+target = 't1'
+for catg in catg_list :
+    sns.violinplot(x=catg, y=target, data=df)
+    plt.show()
+```
+
+
 
 ### groupby和agg
 
@@ -350,12 +459,14 @@ df.groupby(
 ```
 
 ### groupby和count进行统计
+
 ```python
 # 用f1的值进行分组，统计组内 t1, t2, t3 的记录条数(不统计NaN)
 df.groupby(['f1'])[['t1', 't2', 't3']].count()
 ```
 
 ### 密度分布
+
 ```python
 fig, axes = plt.subplots(2, 2)
 fig.set_size_inches(12, 10)
@@ -372,6 +483,7 @@ axes[1, 1].set(xlabel='t4', title='Distribution of t4')
 ```
 
 ### 对分布进行拟合
+
 ```python
 import scipy.stats as st
 y = df['t1']
@@ -411,6 +523,7 @@ for col in numeric_features:
 ```
 
 ### 去掉3个标准差以外数据 （认为是异常值）
+
 ```python
 mask = np.abs(df['t1'] - df['t1'].mean()) <= (3 * df['t1'].std())
 df2 = df[mask]
@@ -418,6 +531,7 @@ df3 = df[~mask]
 ```
 
 ### 不是正态分布
+
 ```python
 # 数据波动大的话容易产生过拟合
 # 所以对数据进行变换，使得数据相对稳定
@@ -431,26 +545,93 @@ sns.distplot(train_y_log)
 plt.show()
 ```
 
-## 特征
+### FacetGrid
 
-### tsfresh时间序列特征工程工具
+sns.FacetGrid() https://blog.csdn.net/weixin_42398658/article/details/82960379
+
 ```python
-# tsfresh -> 时间序列特征工程工具
+# 相当于用f1进行分组，在每个组里画t1的分布图
+g2 = sns.FacetGrid(df, col="f1", col_wrap=4, sharex=False, sharey=False)
+g2.map(sns.distplot, 't1')
 ```
 
-### 特征间两两相关性图
 ```python
+# 相当于用f1进行分组，在每个组里画散点图（横坐标为f2，纵坐标为t1）
+g2 = sns.FacetGrid(train_df, col="f1", col_wrap=4, sharex=False, sharey=False)
+g2.map(plt.scatter, 'f2', 't1', alpha=0.3)
+```
+
+```python
+# 每个数字特征的分布可视化
+numeric_features = df.select_dtypes(include=[np.number])
+f = pd.melt(df, value_vars=numeric_features)  # 将“宽表”变成“长表”
+g = sns.FacetGrid(f, col="variable", col_wrap=2, sharex=False, sharey=False)
+g = g.map(sns.distplot, "value")
+```
+
+```python
+# 相当于用f1进行分组，在每个组里画散点图（f2值不同的点用不同的颜色，横坐标为f3，纵坐标为t1）
+g2 = sns.FacetGrid(df, col='f1', hue='f2', col_wrap=4, sharex=False, sharey=False)
+g2.map(plt.scatter, 'f3', 't1', alpha=0.3)
+g2.add_legend()  # 添加图例
+```
+
+```python
+# 用f1，f2进行分组
+g2 = sns.FacetGrid(df, row='f1', col="f2", hue='f3', sharex=False, sharey=False)
+g2.map(plt.scatter, 'f4', 't1', alpha=0.3)
+g2.add_legend()
+```
+
+### pairplot
+
+sns.pairplot() https://www.jianshu.com/p/6e18d21a4cad
+
+```python
+# 特征间两两相关性图
 feature_list = ['f1', 'f2', 'f3']
 sns.pairplot(df[feature_list], plot_kws={'alpha': 0.1})
 ```
 
-### 特征与目标相关性图
 ```python
+# 特征与目标相关性图
 sns.pairplot(df, x_vars=['f1', 'f2', 'f3', 'f4', 'f5', 'f6'],
              y_vars=['t1', 't2', 't3'], plot_kws={'alpha': 0.1})
 ```
 
+### regplot
+
+```python
+# 散点图+线性回归
+fig, ((ax1, ax2), (ax3, ax4), ) = plt.subplots(nrows=2, ncols=2, figsize=(12, 8))
+sns.regplot(x='f1',
+            y='t1',
+            data=train_df[['f1', 't1']],
+            scatter=True,
+            fit_reg=True,
+            ax=ax1)
+sns.regplot(x='f2',
+            y='t1',
+            data=train_df[['f2', 't1']],
+            scatter=True,
+            fit_reg=True,
+            ax=ax2)
+sns.regplot(x='f3',
+            y='t1',
+            data=train_df[['f3', 't1']],
+            scatter=True,
+            fit_reg=True,
+            ax=ax3)
+sns.regplot(x='f4',
+            y='t1',
+            data=train_df[['f4', 't1']],
+            scatter=True,
+            fit_reg=True,
+            ax=ax4)
+```
+
 ### 特征间两两相关性矩阵热力图
+
 ```python
 corr = df.corr()
 plt.subplots(figsize=(8, 6))
@@ -458,6 +639,7 @@ sns.heatmap(corr, annot=True, vmax=1, cmap='YlGnBu')
 ```
 
 ### 目标与各个特征的相关性大小
+
 ```python
 plt.figure(figsize=(8, 6))
 df.corr()['target'].sort_values(ascending=False).plot(kind='bar')  # 降序
@@ -466,6 +648,7 @@ plt.show()
 ```
 
 ### 选k个和 target 的相关系数最高的特征
+
 ```python
 k = 10
 df.corr().nlargest(k, 'target')['target'].index
@@ -477,23 +660,34 @@ k = 10
 np.abs(df.corr()['target']).nlargest(k).index
 ```
 
-### 根据列的数据类型选择列
-
-有时候需要人为根据实际含义来区分`数字特征`和`类型特征`
+### pandas_profiling生成数据报告
 
 ```python
-df.select_dtypes(exclude='object')
+import pandas_profiling
+pfr = pandas_profiling.ProfileReport(train_df)
+pfr.to_file("example.html")
+```
 
-# 数字特征
-numeric_features = df.select_dtypes(include=[np.number])
-numeric_features.columns
 
-# 类型特征
-categorical_features = df.select_dtypes(include=[np.object])
-categorical_features.columns
+
+
+## 特征工程
+
+### 数据清洗的“完全合一”规则
+
+1. 完整性：单条数据是否存在空值，统计的字段是否完善。
+2. 全面性：观察某一列的全部数值，通过常识来判断该列是否有问题，比如：数据定义、单位标识、数据本身。
+3. 合法性：数据的类型、内容、大小的合法性。比如数据中是否存在非ASCII字符，性别存在了未知，年龄超过了150等。
+4. 唯一性：数据是否存在重复记录，因为数据通常来自不同渠道的汇总，重复的情况是常见的。行数据、列数据都需要是唯一的。
+
+### tsfresh时间序列特征工程工具
+
+```python
+# tsfresh -> 时间序列特征工程工具
 ```
 
 ### 特征编码
+
 ```python
 feature_col_name_list = ['f1', 'f2', 'f3', 'f4']
 for col in feature_col_name_list:
@@ -509,12 +703,14 @@ for col in feature_col_name_list:
 ## 模型
 
 ### 模型保存
+
 ```python
 from joblib import dump, load
 dump(model,'model/AdaBoostClassifier.pkl')
 ```
 
 ### 模型读取
+
 ```python
 from joblib import dump, load
 model=load('model/AdaBoostClassifier.pkl')
@@ -528,6 +724,7 @@ pred_test_y = model.predict(test_x)
 ### GridSearchCV调参
 
 #### 分类
+
 ```python
 from sklearn.svm import SVC
 from sklearn.tree import DecisionTreeClassifier
