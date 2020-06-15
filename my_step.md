@@ -38,6 +38,13 @@ pd.set_option('display.max_columns', None)
 df = train_df.append(test_df)
 ```
 
+```python
+# 训练集和测试集放在一起，方便构造特征
+train_df['is_train'] = 1
+test_df['is_train'] = 0
+df = pd.concat([train_df, test_df], ignore_index=True)
+```
+
 
 
 
@@ -657,12 +664,63 @@ df_f3 = df.pop('f3')  # 删除df的f3列，f3列的值返回给df_f3
 df.loc[:, 'col_a'].replace(to_replace=np.nan, value=df.loc[:, 'col_b'], inplace=True)
 ```
 
-### 去掉3个标准差以外数据 （认为是异常值）
+###  删除异常值
 
 ```python
+# 去掉3个标准差以外数据
 mask = np.abs(df['t1'] - df['t1'].mean()) <= (3 * df['t1'].std())
 df2 = df[mask]
 df3 = df[~mask]
+```
+
+```python
+def outliers_proc(data, col_name, scale=3):
+    """
+    用于清洗异常值，默认用 box_plot(scale=3)进行清洗
+    :param data: 接收 pandas 数据格式
+    :param col_name: pandas 列名
+    :param scale: 尺度
+    :return:
+    """
+    def box_plot_outliers(data_ser, box_scale):
+        """
+        利用箱线图去除异常值
+        :param data_ser: 接收 pandas.Series 数据格式
+        :param box_scale: 箱线图尺度
+        :return:
+        """
+        iqr = box_scale * (data_ser.quantile(0.75) - data_ser.quantile(0.25))
+        val_low = data_ser.quantile(0.25) - iqr  # 下限
+        val_up = data_ser.quantile(0.75) + iqr  # 上限
+        rule_low = (data_ser < val_low)  # 过小
+        rule_up = (data_ser > val_up)  # 过大
+        return (rule_low, rule_up), (val_low, val_up)
+
+    data_n = data.copy()
+    data_series = data_n[col_name]
+    rule, value = box_plot_outliers(data_series, box_scale=scale)
+    index = data_series.index[rule[0] | rule[1]]  # 异常值的索引
+    print("Delete number is: {}".format(len(index)))
+    data_n = data_n.drop(index)
+    data_n.reset_index(drop=True, inplace=True)
+    print("Now column number is: {}".format(data_n.shape[0]))
+    index_low = data_series.index[rule[0]]
+    outliers = data_series.iloc[index_low]
+    print("Description of data less than the lower bound is:")
+    print(pd.Series(outliers).describe())
+    index_up = data_series.index[rule[1]]
+    outliers = data_series.iloc[index_up]
+    print("Description of data larger than the upper bound is:")
+    print(pd.Series(outliers).describe())
+
+    fig, ax = plt.subplots(1, 2, figsize=(10, 7))
+    sns.boxplot(y=data[col_name], data=data, palette="Set1", ax=ax[0])
+    sns.boxplot(y=data_n[col_name], data=data_n, palette="Set1", ax=ax[1])
+    return data_n
+
+
+train_df = outliers_proc(train_df, 'power', scale=3)
+
 ```
 
 ### 不是正态分布
