@@ -915,6 +915,99 @@ def reduce_mem_usage(df):
 
 ## 模型
 
+### L1和L2正则化
+
+https://blog.csdn.net/jinping_shi/article/details/52433975
+
+```
+L1正则化和L2正则化可以看做是损失函数的惩罚项。所谓『惩罚』是指对损失函数中的某些参数做一些限制。对于线性回归模型，使用L1正则化的模型建叫做Lasso回归，使用L2正则化的模型叫做Ridge回归（岭回归）。
+```
+
+```
+L1正则化可以产生稀疏权值矩阵，即产生一个稀疏模型，可以用于特征选择。一定程度上，L1也可以防止过拟合。
+L2正则化可以防止模型过拟合（overfitting）。
+```
+
+```python
+from sklearn.linear_model import LinearRegression
+from sklearn.linear_model import Lasso
+from sklearn.linear_model import Ridge
+
+model = LinearRegression().fit(train_X, train_y_ln)
+print('intercept:' + str(model.intercept_))
+plt.figure(figsize=(16, 8))
+sns.barplot(abs(model.coef_), continuous_feature_names_list)
+
+model = Lasso().fit(train_X, train_y_ln)
+print('intercept:' + str(model.intercept_))
+plt.figure(figsize=(16, 8))
+sns.barplot(abs(model.coef_), continuous_feature_names_list)
+
+model = Ridge().fit(train_X, train_y_ln)
+print('intercept:' + str(model.intercept_))
+plt.figure(figsize=(16, 8))
+sns.barplot(abs(model.coef_), continuous_feature_names_list)
+```
+
+### 决策树中的`model_importance`可用于特征选择
+
+### 绘制学习率曲线与验证曲线
+
+```python
+from sklearn.model_selection import learning_curve, validation_curve
+from sklearn.model_selection import cross_val_score
+from sklearn.metrics import mean_absolute_error, make_scorer
+
+
+def plot_learning_curve(estimator, title, X, y, ylim=None, cv=None,n_jobs=1, train_size=np.linspace(.1, 1.0, 5 )):  
+    plt.figure()  
+    plt.title(title)  
+    if ylim is not None:  
+        plt.ylim(*ylim)  
+    plt.xlabel('Training example')  
+    plt.ylabel('score')  
+    train_sizes, train_scores, test_scores = learning_curve(estimator, X, y, cv=cv, n_jobs=n_jobs, train_sizes=train_size, scoring=make_scorer(mean_absolute_error))  
+    print('train_sizes:')
+    print(train_sizes)
+    print('train_scores:')
+    print(train_scores)
+    print('test_scores:')
+    print(test_scores)
+    train_scores_mean = np.mean(train_scores, axis=1)  
+    train_scores_std = np.std(train_scores, axis=1)  
+    test_scores_mean = np.mean(test_scores, axis=1)  
+    test_scores_std = np.std(test_scores, axis=1)  
+    plt.grid()  # 区域  
+    plt.fill_between(train_sizes, train_scores_mean - train_scores_std,
+                     train_scores_mean + train_scores_std, alpha=0.1,
+                     color='r')
+    plt.fill_between(train_sizes, test_scores_mean - test_scores_std,
+                     test_scores_mean + test_scores_std, alpha=0.1,
+                     color='g')
+    plt.plot(train_sizes, train_scores_mean, 'o-', color='r',
+             label='Training score')
+    plt.plot(train_sizes, test_scores_mean,'o-',color='g',
+             label='Cross-validation score')
+    plt.legend(loc='best')
+    return plt  
+
+
+plot_learning_curve(LinearRegression(), 'Liner_model', train_X[:1000], train_y_ln[:1000], ylim=(0.0, 0.5), cv=5, n_jobs=1)
+```
+
+### 看预测值与真实值之间的差距
+
+```python
+subsample_index = np.random.randint(low=0, high=len(train_y), size=50)
+
+plt.scatter(train_X['f1'][subsample_index], train_y[subsample_index], color='black')
+plt.scatter(train_X['f1'][subsample_index], np.exp(model.predict(train_X.loc[subsample_index])), color='blue', alpha=0.4)
+plt.xlabel('f1')
+plt.ylabel('t1')
+plt.legend(['True t1','Predicted t1'], loc='upper right')
+plt.show()
+```
+
 ### 模型保存
 
 ```python
@@ -927,16 +1020,23 @@ dump(model,'model/AdaBoostClassifier.pkl')
 ```python
 from joblib import dump, load
 model=load('model/AdaBoostClassifier.pkl')
-pred_test_y = model.predict(test_x)
+pred_test_y = model.predict(test_X)
 ```
 
 ### 调参
 
+- 贪心算法 https://www.jianshu.com/p/ab89df9759c8
+- 网格调参 https://blog.csdn.net/weixin_43172660/article/details/83032029
+- 贝叶斯调参 https://blog.csdn.net/linxid/article/details/81189154
+- 贝叶斯调参bayes_opt https://www.cnblogs.com/yangruiGB2312/p/9374377.html
+
 考虑使用`TPOT自动调参`选定模型和大致的参数，再用`GridSearchCV调参`进一步优化参数。
 
-### GridSearchCV调参
 
-#### 分类
+
+#### GridSearchCV调参
+
+##### 分类
 
 ```python
 from sklearn.svm import SVC
@@ -982,10 +1082,10 @@ from sklearn.metrics import accuracy_score
 
 
 # 对具体的分类器进行 GridSearchCV 参数调优
-def GridSearchCV_work(pipeline, train_x, train_y, test_x, test_y, param_grid, score='accuracy_score'):
+def GridSearchCV_work(pipeline, train_X, train_y, test_X, test_y, param_grid, score='accuracy_score'):
     response = {}
     gridsearch = GridSearchCV(estimator=pipeline, param_grid=param_grid, cv=5, scoring=score, n_jobs=-1, error_score=0.)
-    gridsearch.fit(train_x, train_y)  # 寻找最优的参数和最优GridSearchCV的准确率分数
+    gridsearch.fit(train_X, train_y)  # 寻找最优的参数和最优GridSearchCV的准确率分数
     
     # 最佳分数
     print('Best Score: {}'.format(gridsearch.best_score_))
@@ -998,7 +1098,7 @@ def GridSearchCV_work(pipeline, train_x, train_y, test_x, test_y, param_grid, sc
     print('Average Time to Score (s): {}'.format(round(gridsearch.cv_results_['mean_score_time'].mean(), 4)))
     
     # 采用predict函数（特征是测试数据集）来预测标识，预测使用的参数是上一步得到的最优参数
-    predict_y = gridsearch.predict(test_x)
+    predict_y = gridsearch.predict(test_X)
     response['best_estimator'] = gridsearch.best_estimator_
     response['predict_y'] = predict_y
     response['mean_absolute_error'] = accuracy_score(test_y.values, predict_y)
@@ -1014,12 +1114,12 @@ for model, model_name, model_param_grid in zip(classifiers, classifier_names, cl
         # ('pca',PCA),
         (model_name, model)
     ])
-    result = GridSearchCV_work(pipeline, train_x, train_y, test_x, test_y, model_param_grid, score='accuracy_score')
+    result = GridSearchCV_work(pipeline, train_X, train_y, test_X, test_y, model_param_grid, score='accuracy_score')
     print(result)
     print('-' * 16)
 ```
 
-#### 回归
+##### 回归
 ```python
 from sklearn.ensemble import RandomForestRegressor
 import xgboost as xg
@@ -1039,7 +1139,7 @@ regressor_names = [
             'gradientboostingregressor',
 ]
 # 分类器参数
-#注意分类器的参数，字典键的格式，GridSearchCV对调优的参数格式是"分类器名"+"__"+"参数名"
+# 注意分类器的参数，字典键的格式，GridSearchCV对调优的参数格式是"分类器名"+"__"+"参数名"
 regressor_param_grid = [
     {
         'randomforestregressor__n_estimators': [1300, 1500, 1700],
@@ -1072,10 +1172,10 @@ from sklearn.metrics import mean_absolute_error
 
 
 # 对具体的分类器进行 GridSearchCV 参数调优
-def GridSearchCV_work(pipeline, train_x, train_y, test_x, test_y, param_grid, score='neg_mean_absolute_error'):
+def GridSearchCV_work(pipeline, train_X, train_y, test_X, test_y, param_grid, score='neg_mean_absolute_error'):
     response = {}
     gridsearch = GridSearchCV(estimator=pipeline, param_grid=param_grid, cv=5, scoring=score, n_jobs=-1, error_score=0.)
-    gridsearch.fit(train_x, train_y)  # 寻找最优的参数和最优GridSearchCV的准确率分数
+    gridsearch.fit(train_X, train_y)  # 寻找最优的参数和最优GridSearchCV的准确率分数
     
     # 最佳分数
     print('Best Score: {}'.format(gridsearch.best_score_))
@@ -1088,7 +1188,7 @@ def GridSearchCV_work(pipeline, train_x, train_y, test_x, test_y, param_grid, sc
     print('Average Time to Score (s): {}'.format(round(gridsearch.cv_results_['mean_score_time'].mean(), 4)))
     
     # 采用predict函数（特征是测试数据集）来预测标识，预测使用的参数是上一步得到的最优参数
-    predict_y = gridsearch.predict(test_x)
+    predict_y = gridsearch.predict(test_X)
     response['best_estimator'] = gridsearch.best_estimator_
     response['predict_y'] = predict_y
     response['mean_absolute_error'] = mean_absolute_error(test_y.values, predict_y)
@@ -1104,21 +1204,21 @@ for model, model_name, model_param_grid in zip(regressor, regressor_names, regre
             #('pca', PCA),
             (model_name, model)
     ])
-    result = GridSearchCV_work(pipeline, train_x, train_y, test_x, test_y, model_param_grid, score='neg_mean_absolute_error')
+    result = GridSearchCV_work(pipeline, train_X, train_y, test_X, test_y, model_param_grid, score='neg_mean_absolute_error')
     print(result)
     print('-' * 16)
 ```
 
-### TPOT自动调参
+#### TPOT自动调参
 
 https://github.com/EpistasisLab/tpot
 
-#### 分类
+##### 分类
 ```python
 from tpot import TPOTClassifier
 tpot = TPOTClassifier(verbosity=2, max_time_mins=2, n_jobs=-1)
-tpot.fit(train_x, train_y)
-print(tpot.score(test_x, test_y))
+tpot.fit(train_X, train_y)
+print(tpot.score(test_X, test_y))
 
 tpot.export('tpot_exported_pipeline.py')  # 导出自动调参的模型
 ```
@@ -1149,16 +1249,16 @@ from sklearn.metrics import accuracy_score
 accuracy_score(testing_target, results)
 ```
 
-#### 回归
+##### 回归
 ```python
 from tpot import TPOTRegressor
 from sklearn.model_selection import train_test_split
 
-train_x, test_x, train_y, test_y = train_test_split(features, target, train_size=0.75, test_size=0.25, random_state=42)
+train_X, test_X, train_y, test_y = train_test_split(features, target, train_size=0.75, test_size=0.25, random_state=42)
 
 tpot = TPOTRegressor(generations=5, population_size=50, verbosity=2, n_jobs=-1, random_state=42)
-tpot.fit(train_x, train_y)
-print(tpot.score(test_x, test_y))  # -mse
+tpot.fit(train_X, train_y)
+print(tpot.score(test_X, test_y))  # -mse
 
 tpot.export('tpot_exported_pipeline.py')  # 导出自动调参的模型
 ```
@@ -1178,8 +1278,8 @@ from tpot.export_utils import set_param_recursive
 # features = tpot_data.drop('target', axis=1)
 # training_features, testing_features, training_target, testing_target = \
 #             train_test_split(features, tpot_data['target'], random_state=42)
-training_features = train_x
-testing_features = test_x
+training_features = train_X
+testing_features = test_X
 training_target =  train_y
 testing_target = test_y
 
@@ -1198,9 +1298,42 @@ from sklearn.metrics import mean_absolute_error
 mean_absolute_error(testing_target, results)
 ```
 
-### Stacking模型融合
+### 贝叶斯调参
 
-#### 回归
+```python
+# https://www.cnblogs.com/yangruiGB2312/p/9374377.html
+
+from sklearn.datasets import make_classification
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.cross_validation import cross_val_score
+from bayes_opt import BayesianOptimization
+
+# 产生随机分类数据集，10个特征， 2个类别
+x, y = make_classification(n_samples=1000, n_features=10, n_classes=2)
+
+?????????????????????????????????
+```
+
+### 模型融合
+
+1. 简单加权融合:
+   - 回归（分类概率）：算术平均融合（Arithmetic mean），几何平均融合（Geometric mean）；
+   - 分类：投票（Voting）(from sklearn.ensemble import VotingClassifier)
+   - 综合：排序融合(Rank averaging)，log融合
+
+2. stacking/blending:
+
+   - 构建多层模型，并利用预测结果再拟合预测。
+
+3. boosting/bagging（在xgboost，Adaboost,GBDT中已经用到）:
+
+   - 多树的提升方法
+
+#### Stacking模型融合
+
+对于第二层Stacking的模型不宜选取的过于复杂，这样会导致模型在训练集上过拟合，从而使得在测试集上并不能达到很好的效果。
+
+##### 回归
 
 ```python
 from sklearn.linear_model import ElasticNet, Lasso, BayesianRidge, LassoLarsIC
@@ -1284,6 +1417,12 @@ results = stacked_averaged_models.predict(testing_features)
 mean_absolute_error(testing_target, results)
 ```
 
+##### 分类
+
+```python
+??????????????????????????????????
+```
+
 
 
 
@@ -1294,6 +1433,34 @@ mean_absolute_error(testing_target, results)
 ### sklearn的model_evaluation
 
 https://scikit-learn.org/stable/modules/model_evaluation.html#model-evaluation
+
+### 交叉验证`cross_val_score`
+
+```python
+# 回归
+from sklearn.model_selection import cross_val_score
+from sklearn.metrics import mean_absolute_error, make_scorer
+
+cv_int = 5
+scores = cross_val_score(model, X=train_X, y=train_y_ln, verbose=1, cv=cv_int, scoring=make_scorer(mean_absolute_error))
+
+print('AVG:', np.mean(scores))
+
+scores = pd.DataFrame(scores.reshape(1,-1))
+scores.columns = ['cv' + str(x) for x in range(1, cv_int + 1)]
+scores.index = ['MAE']
+scores
+```
+
+```python
+# 回归
+np.mean(cross_val_score(model, X=train_X, y=train_y_ln, verbose=0, cv=5, scoring = make_scorer(mean_absolute_error)))
+```
+
+```python
+# 分类
+np.mean(cross_val_score(model, X=train_X, y=train_y, cv=20, scoring='roc_auc'))
+```
 
 
 
