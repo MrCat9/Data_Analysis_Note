@@ -15,6 +15,9 @@ import numpy as np
 import matplotlib.pyplot as plt
 import seaborn as sns
 import missingno as msno
+import xgboost as xgb
+import lightgbm as lgb
+
 ```
 
 ### 忽略警告提示
@@ -74,6 +77,19 @@ df.duplicated()
 
 ```python
 df.describe()
+```
+
+```python
+def statistics_info(data):
+    print('_min', np.min(data))
+    print('_max:', np.max(data))
+    print('_mean', np.mean(data))
+    print('_ptp', np.ptp(data))
+    print('_std', np.std(data))
+    print('_var', np.var(data))
+
+
+statistics_info(df['t1'])
 ```
 
 #### 第一四分位数
@@ -1101,7 +1117,7 @@ def GridSearchCV_work(pipeline, train_X, train_y, test_X, test_y, param_grid, sc
     predict_y = gridsearch.predict(test_X)
     response['best_estimator'] = gridsearch.best_estimator_
     response['predict_y'] = predict_y
-    response['mean_absolute_error'] = accuracy_score(test_y.values, predict_y)
+    response['accuracy_score'] = accuracy_score(test_y.values, predict_y)
     print('accuracy_score: %0.4lf' % response['accuracy_score'])
     
     return response
@@ -1309,9 +1325,9 @@ from sklearn.cross_validation import cross_val_score
 from bayes_opt import BayesianOptimization
 
 # 产生随机分类数据集，10个特征， 2个类别
-x, y = make_classification(n_samples=1000, n_features=10, n_classes=2)
+X, y = make_classification(n_samples=1000, n_features=10, n_classes=2)
 
-?????????????????????????????????
+????????????
 ```
 
 ### 模型融合
@@ -1329,6 +1345,10 @@ x, y = make_classification(n_samples=1000, n_features=10, n_classes=2)
 
    - 多树的提升方法
 
+在做结果融合的时候，有一个很重要的条件是模型结果的得分要比较近似，然后结果的差异要比较大，这样的结果融合往往有比较好的效果提升。
+
+基于模型层面的融合最好不同模型类型要有一定的差异，用同种模型不同的参数的收益一般是比较小的。
+
 #### Stacking模型融合
 
 对于第二层Stacking的模型不宜选取的过于复杂，这样会导致模型在训练集上过拟合，从而使得在测试集上并不能达到很好的效果。
@@ -1343,7 +1363,6 @@ from sklearn.pipeline import make_pipeline
 from sklearn.preprocessing import RobustScaler
 from sklearn.base import BaseEstimator, TransformerMixin, RegressorMixin, clone
 from sklearn.model_selection import KFold
-
 
 # LASSO Regression :
 lasso = make_pipeline(RobustScaler(), Lasso(alpha=0.0005, random_state=1))
@@ -1368,11 +1387,11 @@ class StackingAveragedModels(BaseEstimator, RegressorMixin, TransformerMixin):
     def fit(self, X, y):
         self.base_models_ = [list() for x in self.base_models]
         self.meta_model_ = clone(self.meta_model)
-        kfold = KFold(n_splits=self.n_folds, shuffle=True, random_state=156)
+        kfold = KFold(n_splits=self.n_folds, shuffle=True, random_state=666)
 
         # Train cloned base models then create out-of-fold predictions
         # that are needed to train the cloned meta-model
-		# 使用K-fold的方法来进行交叉验证，将每次验证的结果作为新的特征来进行处理
+        # 使用K-fold的方法来进行交叉验证，将每次验证的结果作为新的特征来进行处理
         out_of_fold_predictions = np.zeros((X.shape[0], len(self.base_models)))
         for i, model in enumerate(self.base_models):
             for train_index, holdout_index in kfold.split(X, y):
@@ -1381,6 +1400,8 @@ class StackingAveragedModels(BaseEstimator, RegressorMixin, TransformerMixin):
                 instance.fit(X[train_index], y[train_index])
                 y_pred = instance.predict(X[holdout_index])
                 out_of_fold_predictions[holdout_index, i] = y_pred
+        
+        # 可以考虑对初级模型的输出（out_of_fold_predictions）做变换（如取log）
 
         # Now train the cloned  meta-model using the out-of-fold predictions as new feature
         # 将交叉验证预测出的结果 和 训练集中的标签值进行训练
@@ -1397,30 +1418,84 @@ class StackingAveragedModels(BaseEstimator, RegressorMixin, TransformerMixin):
         return self.meta_model_.predict(meta_features)
 
 
-stacked_averaged_models = StackingAveragedModels(base_models=(ENet, GBoost, KRR), 
+stacked_averaged_models = StackingAveragedModels(base_models=(ENet, GBoost, KRR),
                                                  meta_model=lasso)
 stacked_averaged_models.fit(training_features, training_target)
 results = stacked_averaged_models.predict(testing_features)
 
+# 评估（分类）
 # from sklearn.metrics import accuracy_score
 # accuracy_score(testing_target, results)
 
+# 评估（回归）
 from sklearn.metrics import mean_absolute_error
 mean_absolute_error(testing_target, results)
 
+# 模型保存与读取
+from joblib import dump, load
 # 模型保存
-dump(stacked_averaged_models,'model/stacked_averaged_models.pkl')
-
+dump(stacked_averaged_models, 'model/stacked_averaged_models.pkl')
 # 模型读取
 model = load('model/stacked_averaged_models.pkl')
 results = stacked_averaged_models.predict(testing_features)
 mean_absolute_error(testing_target, results)
 ```
 
-##### 分类
+##### 分类（mlxtend）
 
 ```python
-??????????????????????????????????
+import warnings
+warnings.filterwarnings('ignore')
+import itertools
+import numpy as np
+import seaborn as sns
+import matplotlib.pyplot as plt
+import matplotlib.gridspec as gridspec
+
+from sklearn import datasets
+from sklearn.linear_model import LogisticRegression
+from sklearn.neighbors import KNeighborsClassifier
+from sklearn.naive_bayes import GaussianNB
+from sklearn.ensemble import RandomForestClassifier
+from mlxtend.classifier import StackingClassifier
+
+from sklearn.model_selection import cross_val_score
+from mlxtend.plotting import plot_learning_curves
+from mlxtend.plotting import plot_decision_regions
+
+# 以python自带的鸢尾花数据集为例
+iris = datasets.load_iris()
+X, y = iris.data[:, 1:3], iris.target
+
+clf1 = KNeighborsClassifier(n_neighbors=1)
+clf2 = RandomForestClassifier(random_state=1)
+clf3 = GaussianNB()
+lr = LogisticRegression()
+sclf = StackingClassifier(classifiers=[clf1, clf2, clf3], meta_classifier=lr)
+
+label = ['KNN', 'Random Forest', 'Naive Bayes', 'Stacking Classifier']
+clf_list = [clf1, clf2, clf3, sclf]
+
+fig = plt.figure(figsize=(10, 8))
+gs = gridspec.GridSpec(2, 2)
+grid = itertools.product([0, 1], repeat=2)
+
+clf_cv_mean = []
+clf_cv_std = []
+for clf, label, grd in zip(clf_list, label, grid):
+
+    scores = cross_val_score(clf, X, y, cv=3, scoring='accuracy')
+    print("Accuracy: %.2f (+/- %.2f) [%s]" %
+          (scores.mean(), scores.std(), label))
+    clf_cv_mean.append(scores.mean())
+    clf_cv_std.append(scores.std())
+
+    clf.fit(X, y)
+    ax = plt.subplot(gs[grd[0], grd[1]])
+    fig = plot_decision_regions(X=X, y=y, clf=clf)
+    plt.title(label)
+
+plt.show()
 ```
 
 
