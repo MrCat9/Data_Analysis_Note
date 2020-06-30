@@ -10,28 +10,23 @@
 ### 常用包
 
 ```python
+# -*- coding: utf-8 -*-
+
+
+import warnings
+warnings.filterwarnings('ignore')  # 忽略警告提示
 import pandas as pd
+pd.set_option('display.max_columns', None)  # 设置查看列不省略
 import numpy as np
+from scipy import stats
+from scipy import special
 import matplotlib.pyplot as plt
 import seaborn as sns
 import missingno as msno
 import xgboost as xgb
 import lightgbm as lgb
 
-```
 
-### 忽略警告提示
-
-```python
-import warnings
-warnings.filterwarnings('ignore')
-```
-
-### 设置查看列不省略
-
-```python
-import pandas as pd
-pd.set_option('display.max_columns', None)
 ```
 
 ### 合并训练集和测试集
@@ -295,26 +290,26 @@ plt.show()
 def pie(x, explode=None, labels=None, colors=None, autopct=None,
         pctdistance=0.6, shadow=False, labeldistance=1.1, startangle=None,
         radius=None, counterclock=True, wedgeprops=None, textprops=None,
-        center=(0, 0), frame=False, rotatelabels=False, hold=None, data=None)
-
-'''
-x       :(每一块)的比例，如果sum(x) > 1会使用sum(x)归一化；
-labels  :(每一块)饼图外侧显示的说明文字；
-explode :(每一块)离开中心距离；
-startangle :起始绘制角度,默认图是从x轴正方向逆时针画起,如设定=90则从y轴正方向画起；
-shadow  :在饼图下面画一个阴影。默认值：False，即不画阴影；
-labeldistance :label标记的绘制位置,相对于半径的比例，默认值为1.1, 如<1则绘制在饼图内侧；
-autopct :控制饼图内百分比设置,可以使用format字符串或者format function
-        '%1.1f'指小数点前后位数(没有用空格补齐)；
-pctdistance :类似于labeldistance,指定autopct的位置刻度,默认值为0.6；
-radius  :控制饼图半径，默认值为1；
-counterclock ：指定指针方向；布尔值，可选参数，默认为：True，即逆时针。将值改为False即可改为顺时针。
-wedgeprops ：字典类型，可选参数，默认值：None。参数字典传递给wedge对象用来画一个饼图。例如：wedgeprops={'linewidth':3}设置wedge线宽为3。
-textprops ：设置标签（labels）和比例文字的格式；字典类型，可选参数，默认值为：None。传递给text对象的字典参数。
-center ：浮点类型的列表，可选参数，默认值：(0,0)。图标中心位置。
-frame ：布尔类型，可选参数，默认值：False。如果是true，绘制带有表的轴框架。
-rotatelabels ：布尔类型，可选参数，默认为：False。如果为True，旋转每个label到指定的角度。
-'''
+        center=(0, 0), frame=False, rotatelabels=False, hold=None, data=None):
+    '''
+    x       :(每一块)的比例，如果sum(x) > 1会使用sum(x)归一化；
+    labels  :(每一块)饼图外侧显示的说明文字；
+    explode :(每一块)离开中心距离；
+    startangle :起始绘制角度,默认图是从x轴正方向逆时针画起,如设定=90则从y轴正方向画起；
+    shadow  :在饼图下面画一个阴影。默认值：False，即不画阴影；
+    labeldistance :label标记的绘制位置,相对于半径的比例，默认值为1.1, 如<1则绘制在饼图内侧；
+    autopct :控制饼图内百分比设置,可以使用format字符串或者format function
+            '%1.1f'指小数点前后位数(没有用空格补齐)；
+    pctdistance :类似于labeldistance,指定autopct的位置刻度,默认值为0.6；
+    radius  :控制饼图半径，默认值为1；
+    counterclock ：指定指针方向；布尔值，可选参数，默认为：True，即逆时针。将值改为False即可改为顺时针。
+    wedgeprops ：字典类型，可选参数，默认值：None。参数字典传递给wedge对象用来画一个饼图。例如：wedgeprops={'linewidth':3}设置wedge线宽为3。
+    textprops ：设置标签（labels）和比例文字的格式；字典类型，可选参数，默认值为：None。传递给text对象的字典参数。
+    center ：浮点类型的列表，可选参数，默认值：(0,0)。图标中心位置。
+    frame ：布尔类型，可选参数，默认值：False。如果是true，绘制带有表的轴框架。
+    rotatelabels ：布尔类型，可选参数，默认为：False。如果为True，旋转每个label到指定的角度。
+    '''
+    pass
 ```
 
 ### 箱型图
@@ -838,10 +833,14 @@ train_df = outliers_proc(train_df, 'power', scale=3)
 
 ### 不是正态分布
 
+数据波动大的话容易产生过拟合，所以对数据进行变换，使得数据相对稳定。
+
+许多回归模型默认假设`target`服从正态分布
+
+#### 对数变换
+
 ```python
-# 数据波动大的话容易产生过拟合
-# 所以对数据进行变换，使得数据相对稳定
-# 可以选择对数变换
+# 对数变换
 train_y = df['t1']
 sns.distplot(train_y)
 plt.show()
@@ -858,6 +857,89 @@ df['f1'].plot.hist()
 df['f1'] = np.log(df['f1'] + 1)    # 取对数  # ln(0+1)=0
 df['f1'] = ((df['f1'] - np.min(df['f1'])) / (np.max(df['f1']) - np.min(df['f1'])))  # 归一化
 df['f1'].plot.hist()
+```
+
+#### BOX-COX
+
+https://blog.csdn.net/Jim_Sun_Jing/article/details/100665967
+
+```python
+# -*- coding: utf-8 -*-
+from scipy import stats
+from scipy import special
+```
+
+```python
+# 变换前
+
+fig = plt.figure(figsize=(15, 5))
+
+# pic1
+plt.subplot(1, 2, 1)
+sns.distplot(train_df['target'], fit=stats.norm)
+(mu, sigma) = stats.norm.fit(train_df['target'])
+plt.legend(['$\mu=$ {:.2f} and $\sigma=$ {:.2f}'.format(mu, sigma)], loc='best')
+plt.ylabel('Frequency')
+
+# pic2
+plt.subplot(1, 2, 2)
+res = stats.probplot(train_df['target'], plot=plt)
+
+plt.suptitle('Before')
+
+print(f"Skewness of target: {train_df['target'].skew()}")
+print(f"Kurtosis of target: {train_df['target'].kurt()}")
+```
+
+```python
+# 进行Box-Cox变换
+# scipy.stats.boxcox
+train_df['target_boxcox'], boxcox_lambda = stats.boxcox(train_df['target'])
+print('boxcox_lambda:', boxcox_lambda)
+
+fig = plt.figure(figsize=(15, 5))
+
+# pic1
+plt.subplot(1, 2, 1)
+sns.distplot(train_df['target_boxcox'], fit=stats.norm)
+(mu, sigma) = stats.norm.fit(train_df['target_boxcox'])
+plt.legend(['$\mu=$ {:.2f} and $\sigma=$ {:.2f}'.format(mu, sigma)], loc='best')
+plt.ylabel('Frequency')
+
+# pic2
+plt.subplot(1, 2, 2)
+res = stats.probplot(train_df['target_boxcox'], plot=plt)
+
+plt.suptitle('After')
+
+print(f"Skewness of target: {train_df['target_boxcox'].skew()}")
+print(f"Kurtosis of target: {train_df['target_boxcox'].kurt()}")
+```
+
+```python
+# 进行Box-Cox变换
+# scipyspecial.boxcox1p
+boxcox_lambda = stats.boxcox_normmax(train_df['target'] + 1)  # 寻找最佳变换参数λ
+print('boxcox_lambda:', boxcox_lambda)
+train_df['target_boxcox'] = special.boxcox1p(train_df['target'], boxcox_lambda)
+
+fig = plt.figure(figsize=(15, 5))
+
+# pic1
+plt.subplot(1, 2, 1)
+sns.distplot(train_df['target_boxcox'], fit=stats.norm)
+(mu, sigma) = stats.norm.fit(train_df['target_boxcox'])
+plt.legend(['$\mu=$ {:.2f} and $\sigma=$ {:.2f}'.format(mu, sigma)], loc='best')
+plt.ylabel('Frequency')
+
+# pic2
+plt.subplot(1, 2, 2)
+res = stats.probplot(train_df['target_boxcox'], plot=plt)
+
+plt.suptitle('After')
+
+print(f"Skewness of target_boxcox: {train_df['target_boxcox'].skew()}")
+print(f"Kurtosis of target_boxcox: {train_df['target_boxcox'].kurt()}")
 ```
 
 ### 特征编码
@@ -884,6 +966,10 @@ for col in feature_col_name_list:
 ### 降维
 
 - PCA/ LDA/ ICA
+
+```python
+from sklearn.decomposition import PCA, SparsePCA, FastICA, FactorAnalysis
+```
 
 ### 减少df内存占用
 
@@ -1046,7 +1132,7 @@ pred_test_y = model.predict(test_X)
 - 贝叶斯调参 https://blog.csdn.net/linxid/article/details/81189154
 - 贝叶斯调参bayes_opt https://www.cnblogs.com/yangruiGB2312/p/9374377.html
 
-考虑使用`TPOT自动调参`选定模型和大致的参数，再用`GridSearchCV调参`进一步优化参数。
+考虑使用`TPOT自动调参`选定模型和大致的参数，再用`bayes_opt贝叶斯调参`，`GridSearchCV调参`进一步优化参数。
 
 
 
