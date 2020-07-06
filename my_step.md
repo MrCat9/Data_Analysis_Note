@@ -26,7 +26,6 @@ import missingno as msno
 import xgboost as xgb
 import lightgbm as lgb
 
-
 ```
 
 ### 合并训练集和测试集
@@ -43,6 +42,14 @@ test_df['is_train'] = 0
 df = pd.concat([train_df, test_df], ignore_index=True)
 ```
 
+```python
+# 将处理后的 df 赋值给 train_df, test_df
+train_df = df[df['is_train'] == 1]
+train_df.drop(['is_train'], axis=1, inplace=True)
+test_df = df[df['is_train'] == 0]
+test_df.drop(['is_train'], axis=1, inplace=True)
+```
+
 
 
 
@@ -52,6 +59,12 @@ df = pd.concat([train_df, test_df], ignore_index=True)
 
 ```python
 df.shape
+```
+
+```python
+print('train_df shape:', train_df.shape)
+print('test_df shape:', test_df.shape)
+print('df.shape:', df.shape)
 ```
 
 ### 查看几行
@@ -121,6 +134,14 @@ for col_name in df.columns:
 df[['str_col']].astype('float64')
 ```
 
+```python
+df['int64_col'] = df['int64_col'].astype('object')
+```
+
+```python
+df[['int64_col1', 'int64_col2']] = df[['int64_col1', 'int64_col2']].astype('object')
+```
+
 ### 强制类型转换 
 
 ```python
@@ -130,15 +151,15 @@ df['date_datetime'] = pd.to_datetime(df['date_str'])
 df['date'] = pd.to_datetime(df[['year', 'month', 'day']])
 ```
 
-### 类别特征的列转为category数据类型
+### 类别型特征的列转为category数据类型
 
 ```python
 categorical_features = [
     'f1', 'f2', 'f3', 'f4', 'f5', 'f6'
 ]
 for c in categorical_features:
-    if df[c].isnull().any():
-        df[c] = df[c].fillna('MISSING')
+    # if df[c].isnull().any():
+    #     df[c] = df[c].fillna('MISSING')
     df[c] = df[c].astype('category')
 ```
 
@@ -149,33 +170,44 @@ for c in categorical_features:
 ```python
 df.select_dtypes(exclude='object')
 
-# 数字特征
-numeric_features = df.select_dtypes(include=[np.number])
-numeric_features.columns
+# 数值型特征
+numeric_feature_df = df.select_dtypes(include=[np.number])
+numeric_feature_df.columns
+numeric_feature_list = numeric_feature_df.columns.to_list()
+numeric_feature_list.remove('is_train')
 
-# 类型特征
-categorical_features = df.select_dtypes(include=[np.object])
-categorical_features.columns
+# 类别型特征
+categorical_feature_df = df.select_dtypes(include=[np.object])
+categorical_feature_df.columns
+categorical_feature_list = categorical_feature_df.columns.to_list()
+categorical_feature_list.remove('ori_id')
+# 每个类别的种类数
+for c in categorical_feature_list:
+    print(f'{c}  {len(df[c].value_counts())}')
+# 去除种类过多的类，方便可视化
+sub_categorical_feature_list = [c for c in categorical_feature_list if c not in ['f1', 'f2', ]]
 ```
 
 ### 日期时间处理
 
 ```python
-df['datetime_col'] = pd.to_datetime(df['datetime_col'], format='%Y-%m-%d %H:%M:%S')  # 列数据类型转换
+datetime_col_name = 'datetime_col'
 
-# 日期 
-df['date'] = df['datetime_col'].dt.date  # 年月日
-df['year'] = df['datetime_col'].dt.year  # 年
-df['month'] = df['datetime_col'].dt.month  # 月
-df['day'] = df['datetime_col'].dt.day  # 日
+df[datetime_col_name] = pd.to_datetime(df[datetime_col_name], format='%Y-%m-%d %H:%M:%S')  # 列数据类型转换
+
+# 日期
+df[datetime_col_name + '_date'] = df[datetime_col_name].dt.date.astype('object')  # 年月日
+df[datetime_col_name + '_year'] = df[datetime_col_name].dt.year.astype('object')  # 年
+df[datetime_col_name + '_month'] = df[datetime_col_name].dt.month.astype('object')  # 月
+df[datetime_col_name + '_day'] = df[datetime_col_name].dt.day.astype('object')  # 日
 
 # 时间
-df['time'] = df['datetime_col'].dt.time  # 时分秒
-df['hour'] = df['datetime_col'].dt.hour  # 时
-df['minute'] = df['datetime_col'].dt.minute  # 分
-df['second'] = df['datetime_col'].dt.second  # 秒
+df[datetime_col_name + '_time'] = df[datetime_col_name].dt.time.astype('object')  # 时分秒
+df[datetime_col_name + '_hour'] = df[datetime_col_name].dt.hour.astype('object')  # 时
+df[datetime_col_name + '_minute'] = df[datetime_col_name].dt.minute.astype('object')  # 分
+df[datetime_col_name + '_second'] = df[datetime_col_name].dt.second.astype('object')  # 秒
 
-df['weekday'] = df['datetime_col'].dt.weekday  # 星期
+df[datetime_col_name + '_weekday'] = df[datetime_col_name].dt.weekday.astype('object')  # 星期  # 0--6
 ```
 
 ### 空值统计
@@ -191,10 +223,10 @@ df.notna()
 ### missingno空值可视化处理
 
 ```python
-import missingno as msno  # pip install missingno
+# import missingno as msno  # pip install missingno
 msno.matrix(df, labels=True)  # DataFrame的无效性的矩阵可视化
 msno.bar(df)  # 条形图
-msno.heatmap(data)  # 空值间的相关性热力图
+msno.heatmap(df)  # 空值间的相关性热力图
 ```
 
 https://blog.csdn.net/Andy_shenzl/article/details/81633356
@@ -237,34 +269,37 @@ ax.set_title('this is title')
 ### 柱形图
 
 ```python
-# 数值特征t1的频数
+# 数值型特征t1的分布
+
 plt.hist(df['t1'], orientation='vertical', histtype='bar', color='red')
 
 df['f1'].plot.hist()
+
+sns.distplot(df['f1'])
 ```
 
 ```python
-# 类别特征的每个类别频数可视化(countplot)
+# 类别型特征的每个类别频数可视化(countplot)
 def count_plot(x,  **kwargs):
     sns.countplot(x=x)
-    x=plt.xticks(rotation=90)
+    x = plt.xticks(rotation=90)
 
 
-f = pd.melt(df, value_vars=categorical_features)
-g = sns.FacetGrid(f, col="variable",  col_wrap=2, sharex=False, sharey=False, size=5)
-g = g.map(count_plot, "value")
+f = pd.melt(df, value_vars=categorical_feature_list)
+g = sns.FacetGrid(f, col='variable',  col_wrap=2, sharex=False, sharey=False, size=5)
+g = g.map(count_plot, 'value')
 ```
 
 ```python
-# 类别特征的柱形图可视化  # 每个类的t1值的平均值
+# 类别型特征的柱形图可视化  # 每个类的t1值的平均值
 def bar_plot(x, y, **kwargs):
     sns.barplot(x=x, y=y)
-    x=plt.xticks(rotation=90)
+    x = plt.xticks(rotation=90)
 
 
-f = pd.melt(df, id_vars=['t1'], value_vars=categorical_features)
-g = sns.FacetGrid(f, col="variable", col_wrap=2, sharex=False, sharey=False, size=5)
-g = g.map(bar_plot, "value", "t1")
+f = pd.melt(df, id_vars=['t1'], value_vars=categorical_feature_list)
+g = sns.FacetGrid(f, col='variable', col_wrap=2, sharex=False, sharey=False, size=5)
+g = g.map(bar_plot, 'value', 't1')
 ```
 
 ### 圆饼图
@@ -346,51 +381,49 @@ df.boxplot(['f1', 'f2'])
 ```
 
 ```python
-# 类别特征箱形图可视化
-categorical_features = [
-    'f1', 'f2', 'f3', 'f4', 'f5', 'f6'
-]
-for c in categorical_features:
-    if df[c].isnull().any():
-        df[c] = df[c].fillna('MISSING')
-    df[c] = df[c].astype('category')
+# 类别型特征箱形图可视化
+# categorical_features = [
+#     'f1', 'f2', 'f3', 'f4', 'f5', 'f6'
+# ]
+# for c in categorical_features:
+#     # if df[c].isnull().any():
+#     #     df[c] = df[c].fillna('MISSING')
+#     df[c] = df[c].astype('category')
 
 
-def boxplot(x, y, **kwargs):
+def box_plot(x, y, **kwargs):
     sns.boxplot(x=x, y=y)
     x = plt.xticks(rotation=90)  # x轴标签逆时针旋转90°
 
 
-f = pd.melt(df, id_vars=['t1'], value_vars=categorical_features)
+f = pd.melt(df, id_vars=['t1'], value_vars=categorical_feature_list)
 g = sns.FacetGrid(f,
-                  col="variable",
+                  col='variable',
                   col_wrap=2,
                   sharex=False,
                   sharey=False,
                   size=5)
-g.map(boxplot, "value", "t1")
+g.map(box_plot, 'value', 't1')
 ```
 
 ### 小提琴图
 
 ```python
 # 类别特征的小提琴图可视化
-catg_list = categorical_features
+categorical_feature_list
 target = 't1'
-for catg in catg_list :
-    sns.violinplot(x=catg, y=target, data=df)
+for c in categorical_feature_list:
+    sns.violinplot(x=c, y=target, data=df)
     plt.show()
 ```
 
-
-
-### groupby和agg
+### `groupby`和`agg`
 
 注意：
 使用`agg`的`sum`，`mean`方法会自动填充空值为`0`；使用`agg`的`max`，`min`方法不会自动填充空值（pandas版本：1.0.3）
 
 ```python
-# 对df使用groupby和agg
+# 对 df 使用 groupby 和 agg
 agged1 = df.groupby(
     ['f1', 'f2'],  # 以f1, f2的值进行分组
 ).agg(
@@ -435,14 +468,14 @@ df.groupby(
 )
 ```
 
-### groupby和count进行统计
+### `groupby`和`count`进行统计
 
 ```python
 # 用f1的值进行分组，统计组内 t1, t2, t3 的记录条数(不统计NaN)
 df.groupby(['f1'])[['t1', 't2', 't3']].count()
 ```
 
-### 密度分布
+### 密度分布（数值型特征）
 
 ```python
 fig, axes = plt.subplots(2, 2)
@@ -491,9 +524,9 @@ sns.distplot(df.kurt(), color='orange', axlabel='Kurtness')
 ```
 
 ```python
-# 查看特征的 偏度和峰值
-numeric_features = df.select_dtypes(include=[np.number])
-for col in numeric_features:
+# 查看数值型特征的 偏度和峰值
+# numeric_feature_list = df.select_dtypes(include=[np.number])
+for col in numeric_feature_list:
     print('{:15}'.format(col),
           'Skewness: {:05.2f}'.format(df[col].skew()), '   ',
           'Kurtosis: {:06.2f}'.format(df[col].kurt()))
@@ -511,16 +544,16 @@ g2.map(sns.distplot, 't1')
 
 ```python
 # 相当于用f1进行分组，在每个组里画散点图（横坐标为f2，纵坐标为t1）
-g2 = sns.FacetGrid(train_df, col="f1", col_wrap=4, sharex=False, sharey=False)
+g2 = sns.FacetGrid(train_df, col='f1', col_wrap=4, sharex=False, sharey=False)
 g2.map(plt.scatter, 'f2', 't1', alpha=0.3)
 ```
 
 ```python
-# 每个数字特征的分布可视化
-numeric_features = df.select_dtypes(include=[np.number])
-f = pd.melt(df, value_vars=numeric_features)  # 将“宽表”变成“长表”
-g = sns.FacetGrid(f, col="variable", col_wrap=2, sharex=False, sharey=False)
-g = g.map(sns.distplot, "value")
+# 每个数字型特征的分布可视化
+# numeric_feature_list = df.select_dtypes(include=[np.number])
+f = pd.melt(df, value_vars=numeric_feature_list)  # 将“宽表”变成“长表”
+g = sns.FacetGrid(f, col='variable', col_wrap=2, sharex=False, sharey=False)
+g = g.map(sns.distplot, 'value')
 ```
 
 ```python
@@ -532,7 +565,7 @@ g2.add_legend()  # 添加图例
 
 ```python
 # 用f1，f2进行分组
-g2 = sns.FacetGrid(df, row='f1', col="f2", hue='f3', sharex=False, sharey=False)
+g2 = sns.FacetGrid(df, row='f1', col='f2', hue='f3', sharex=False, sharey=False)
 g2.map(plt.scatter, 'f4', 't1', alpha=0.3)
 g2.add_legend()
 ```
@@ -661,7 +694,7 @@ $$
 5. 特征构造：
 
    - 构造统计量特征，报告计数、求和、比例、标准差等；
-   - 时间特征，包括相对时间和绝对时间，节假日，双休日等；
+   - 时间特征，包括相对时间和绝对时间，节假日，双休日，距离月末/月初的时间，距离最近节假日的时间，时间间隔（出产日期-出售日期）等；
    - 地理信息，包括分箱，分布编码等方法；
    - 非线性变换，包括 log/ 平方/ 根号等；
    - 特征组合，特征交叉；
@@ -712,7 +745,7 @@ $$
 1. 位移求导 = 速度
 2. 速度求导 = 加速度
 3. 结束时间 - 开始时间 = 持续时间
-4. 时间 -> 绝对时间，相对时间，节假日，周末
+4. 时间 -> 绝对时间，相对时间，节假日，周末，距离月末/月初的时间，距离最近节假日的时间，时间间隔（出产日期-出售日期）等
 5. 邮编 -> 省市区县
 6. groupby + merge -> 品牌/地区/… 的 最大值`.max()`/最小值`.min()`/和`.sum()`/均值`.mean()`/中位数`.median()`/标准差`.std()`/…
 7. 数据分桶/数据分箱
@@ -828,7 +861,6 @@ def outliers_proc(data, col_name, scale=3):
 
 
 train_df = outliers_proc(train_df, 'power', scale=3)
-
 ```
 
 ### 不是正态分布
@@ -859,6 +891,58 @@ df['f1'] = ((df['f1'] - np.min(df['f1'])) / (np.max(df['f1']) - np.min(df['f1'])
 df['f1'].plot.hist()
 ```
 
+```python
+def my_log(_df, _c: str):
+    # 处理不是正态分布
+    # 使用 log 变换
+
+    new_c = _c + '_log'
+    
+    # ---------------- 变换前 ----------------
+    fig = plt.figure(figsize=(15, 5))
+    
+    # pic1
+    plt.subplot(1, 2, 1)
+    sns.distplot(_df[_c], fit=stats.norm)
+    (mu, sigma) = stats.norm.fit(_df[_c])
+    plt.legend(['$\mu=$ {:.2f} and $\sigma=$ {:.2f}'.format(mu, sigma)], loc='best')
+    plt.ylabel('Frequency')
+    
+    # pic2
+    plt.subplot(1, 2, 2)
+    res = stats.probplot(_df[_c], plot=plt)  # qq图
+    
+    plt.suptitle('Before')
+    
+    print(f"Skewness of {_c}: {_df[_c].skew()}")
+    print(f"Kurtosis of {_c}: {_df[_c].kurt()}")
+    
+    # ---------------- 进行 log 变换 ----------------
+    _df[new_c] = np.log(_df[_c] + 1)
+    
+    fig = plt.figure(figsize=(15, 5))
+    
+    # pic1
+    plt.subplot(1, 2, 1)
+    sns.distplot(_df[new_c], fit=stats.norm)
+    (mu, sigma) = stats.norm.fit(_df[new_c])
+    plt.legend(['$\mu=$ {:.2f} and $\sigma=$ {:.2f}'.format(mu, sigma)], loc='best')
+    plt.ylabel('Frequency')
+    
+    # pic2
+    plt.subplot(1, 2, 2)
+    res = stats.probplot(_df[new_c], plot=plt)
+    
+    plt.suptitle('After')
+    
+    print(f"Skewness of {new_c}: {_df[new_c].skew()}")
+    print(f"Kurtosis of {new_c}: {_df[new_c].kurt()}")
+    
+    return _df
+
+df = my_log(df, 'f1')
+```
+
 #### BOX-COX
 
 https://blog.csdn.net/Jim_Sun_Jing/article/details/100665967
@@ -883,7 +967,7 @@ plt.ylabel('Frequency')
 
 # pic2
 plt.subplot(1, 2, 2)
-res = stats.probplot(train_df['target'], plot=plt)
+res = stats.probplot(train_df['target'], plot=plt)  # qq图
 
 plt.suptitle('Before')
 
@@ -942,6 +1026,76 @@ print(f"Skewness of target_boxcox: {train_df['target_boxcox'].skew()}")
 print(f"Kurtosis of target_boxcox: {train_df['target_boxcox'].kurt()}")
 ```
 
+```python
+def my_boxcox(_df, _c: str):
+    # 处理不是正态分布
+    # 使用 BOX-COX 变换
+
+    new_c = _c + '_boxcox'
+
+    # ---------------- 变换前 ----------------
+    fig = plt.figure(figsize=(15, 5))
+
+    # pic1
+    plt.subplot(1, 2, 1)
+    sns.distplot(_df[_c], fit=stats.norm)
+    (mu, sigma) = stats.norm.fit(_df[_c])
+    plt.legend(['$\mu=$ {:.2f} and $\sigma=$ {:.2f}'.format(mu, sigma)], loc='best')
+    plt.ylabel('Frequency')
+
+    # pic2
+    plt.subplot(1, 2, 2)
+    res = stats.probplot(_df[_c], plot=plt)  # qq图
+
+    plt.suptitle('Before')
+
+    print(f"Skewness of {_c}: {_df[_c].skew()}")
+    print(f"Kurtosis of {_c}: {_df[_c].kurt()}")
+
+    # ---------------- 进行Box-Cox变换 ----------------
+    # scipyspecial.boxcox1p
+    boxcox_lambda = stats.boxcox_normmax(_df[_c] + 1)  # 寻找最佳变换参数λ
+    print(_c, 'boxcox_lambda:', boxcox_lambda)
+    _df[new_c] = special.boxcox1p(_df[_c], boxcox_lambda)
+
+    fig = plt.figure(figsize=(15, 5))
+
+    # pic1
+    plt.subplot(1, 2, 1)
+    sns.distplot(_df[new_c], fit=stats.norm)
+    (mu, sigma) = stats.norm.fit(_df[new_c])
+    plt.legend(['$\mu=$ {:.2f} and $\sigma=$ {:.2f}'.format(mu, sigma)], loc='best')
+    plt.ylabel('Frequency')
+
+    # pic2
+    plt.subplot(1, 2, 2)
+    res = stats.probplot(_df[new_c], plot=plt)
+
+    plt.suptitle('After')
+
+    print(f"Skewness of {new_c}: {_df[new_c].skew()}")
+    print(f"Kurtosis of {new_c}: {_df[new_c].kurt()}")
+
+    return _df
+
+df = my_boxcox(df, 'f1')
+
+
+# # 将处理后的 df 赋值给 train_df, test_df
+# train_df = df[df['is_train'] == 1]
+# train_df.drop(['is_train'], axis=1, inplace=True)
+# test_df = df[df['is_train'] == 0]
+# test_df.drop(['is_train'], axis=1, inplace=True)
+# 
+# # 对 price 使用 BOX-COX 变换
+# train_df = my_boxcox(train_df, 'f1')
+# 
+# # 训练集和测试集放在一起，方便构造特征
+# train_df['is_train'] = 1
+# test_df['is_train'] = 0
+# df = pd.concat([train_df, test_df], ignore_index=True)
+```
+
 ### 特征编码
 
 ```python
@@ -978,13 +1132,17 @@ def reduce_mem_usage(df):
     """ iterate through all the columns of a dataframe and modify the data type
         to reduce memory usage.        
     """
-    start_mem = df.memory_usage().sum() 
+    start_mem = df.memory_usage().sum() / 1e6 
     print('Memory usage of dataframe is {:.2f} MB'.format(start_mem))
     
     for col in df.columns:
         col_type = df[col].dtype
+        col_type_str = str(col_type)
         
-        if col_type != 'object':
+        # if col_type != 'object':
+        # if col_type == np.number:
+        if col_type_str.startswith('int') or col_type_str.startswith('float'):
+            print(f'number col: {col}, col_type: {col_type}')
             c_min = df[col].min()
             c_max = df[col].max()
             if str(col_type)[:3] == 'int':
@@ -1003,10 +1161,13 @@ def reduce_mem_usage(df):
                     df[col] = df[col].astype(np.float32)
                 else:
                     df[col] = df[col].astype(np.float64)
-        else:
+        elif col_type == 'object':
+            print(f'object col: {col}, col_type: {col_type}')
             df[col] = df[col].astype('category')
+        else:
+            print(f'unprocess col: {col}, col_type: {col_type}')
 
-    end_mem = df.memory_usage().sum() 
+    end_mem = df.memory_usage().sum() / 1e6 
     print('Memory usage after optimization is: {:.2f} MB'.format(end_mem))
     print('Decreased by {:.1f}%'.format(100 * (start_mem - end_mem) / start_mem))
     return df
@@ -1405,15 +1566,94 @@ mean_absolute_error(testing_target, results)
 ```python
 # https://www.cnblogs.com/yangruiGB2312/p/9374377.html
 
+import warnings
+warnings.filterwarnings('ignore')
+import pandas as pd
+import numpy as np
+#
 from sklearn.datasets import make_classification
 from sklearn.ensemble import RandomForestClassifier
-from sklearn.cross_validation import cross_val_score
+from sklearn.model_selection import cross_val_score
 from bayes_opt import BayesianOptimization
 
 # 产生随机分类数据集，10个特征， 2个类别
-X, y = make_classification(n_samples=1000, n_features=10, n_classes=2)
+train_X, train_y = make_classification(n_samples=1000, n_features=10, n_classes=2, random_state=121)
 
-????????????
+# 用模型的默认参数训练
+rf = RandomForestClassifier()
+print(np.mean(cross_val_score(rf, train_X, train_y, cv=20, scoring='roc_auc')))  # 0.9571532051282048
+
+def rf_cv(n_estimators, min_samples_split, max_features, max_depth):
+    val = cross_val_score(
+        RandomForestClassifier(
+            n_estimators=int(n_estimators),
+            min_samples_split=int(min_samples_split),
+            max_features=min(max_features, 0.999),  # float
+            max_depth=int(max_depth),
+            random_state=2),
+        train_X,
+        train_y,
+        scoring='roc_auc',
+        cv=5).mean()
+    return val
+
+rf_bo = BayesianOptimization(
+    rf_cv, {
+        'n_estimators': (10, 250),
+        'min_samples_split': (2, 25),
+        'max_features': (0.1, 0.999),
+        'max_depth': (5, 15)
+    })
+
+rf_bo.maximize()
+
+rf_bo.max
+'''
+{'target': 0.9603981858185818,
+ 'params': {'max_depth': 5.323451089365594,
+  'max_features': 0.35032152841688646,
+  'min_samples_split': 9.097395601034854,
+  'n_estimators': 146.20001157722896}}
+'''
+
+# 使用贝叶斯优化器计算出的参数
+rf = RandomForestClassifier(max_depth=5,
+                           max_features=0.35,
+                           min_samples_split=9,
+                           n_estimators=146,
+                           n_jobs=-1)
+print(np.mean(cross_val_score(rf, train_X, train_y, cv=20, scoring='roc_auc')))  # 0.9618334615384614
+
+# ----------------------------------------------------------------
+
+# 对比 网格搜索（GridSearchCV）
+from sklearn.model_selection import GridSearchCV
+parameters = {
+    'n_estimators': list(range(100, 151, 10)) + [145, 146, 147],
+    'min_samples_split': range(5, 12, 2),
+    'max_features': list(i/10 for i in range(1, 6, 1)) + [0.35, 0.62],
+    'max_depth': list(range(1, 16, 3)) + [5, 9]
+}
+
+rf = RandomForestClassifier()
+clf = GridSearchCV(rf, parameters, cv=5, n_jobs=-1)
+clf.fit(train_X, train_y)
+
+clf.best_params_
+'''
+{'max_depth': 10,
+ 'max_features': 0.35,
+ 'min_samples_split': 5,
+ 'n_estimators': 146}
+'''
+
+rf = RandomForestClassifier(max_depth=10,
+                            max_features=0.35,
+                            min_samples_split=5,
+                            n_estimators=146,
+                            n_jobs=-1)
+
+print(np.mean(cross_val_score(rf, train_X, train_y, cv=20, scoring='roc_auc')))  # 0.9569120512820515
 ```
 
 ### 模型融合
