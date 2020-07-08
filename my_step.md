@@ -570,22 +570,6 @@ g2.map(plt.scatter, 'f4', 't1', alpha=0.3)
 g2.add_legend()
 ```
 
-### pairplot
-
-sns.pairplot() https://www.jianshu.com/p/6e18d21a4cad
-
-```python
-# 特征间两两相关性图
-feature_list = ['f1', 'f2', 'f3']
-sns.pairplot(df[feature_list], plot_kws={'alpha': 0.1})
-```
-
-```python
-# 特征与目标相关性图
-sns.pairplot(df, x_vars=['f1', 'f2', 'f3', 'f4', 'f5', 'f6'],
-             y_vars=['t1', 't2', 't3'], plot_kws={'alpha': 0.1})
-```
-
 ### regplot
 
 ```python
@@ -593,31 +577,48 @@ sns.pairplot(df, x_vars=['f1', 'f2', 'f3', 'f4', 'f5', 'f6'],
 fig, ((ax1, ax2), (ax3, ax4), ) = plt.subplots(nrows=2, ncols=2, figsize=(12, 8))
 sns.regplot(x='f1',
             y='t1',
-            data=train_df[['f1', 't1']],
+            data=train_df,
             scatter=True,
             fit_reg=True,
             ax=ax1)
 sns.regplot(x='f2',
             y='t1',
-            data=train_df[['f2', 't1']],
+            data=train_df,
             scatter=True,
             fit_reg=True,
             ax=ax2)
 sns.regplot(x='f3',
             y='t1',
-            data=train_df[['f3', 't1']],
+            data=train_df,
             scatter=True,
             fit_reg=True,
             ax=ax3)
 sns.regplot(x='f4',
             y='t1',
-            data=train_df[['f4', 't1']],
+            data=train_df,
             scatter=True,
             fit_reg=True,
             ax=ax4)
 ```
 
-### 特征间两两相关性矩阵热力图
+```python
+def my_sns_regplot(data_df, numeric_feature_list: list, y_label: str):
+    """
+    数值型特征的 散点图+线性回归
+    :param data_df:
+    :param numeric_feature_list:
+    :param y_label:
+    :return:
+    """
+    for nf in numeric_feature_list:
+        print(nf)
+        sns.regplot(x=nf, y=y_label, data=df)
+        plt.show()
+
+my_sns_regplot(df, numeric_feature_list, 'target')
+```
+
+### 数值型特征间两两相关性矩阵热力图
 
 ```python
 corr = df.corr()
@@ -625,7 +626,7 @@ plt.subplots(figsize=(8, 6))
 sns.heatmap(corr, annot=True, vmax=1, cmap='YlGnBu')
 ```
 
-### 目标与各个特征的相关性大小
+### 目标与各个数值型特征的相关性大小
 
 ```python
 plt.figure(figsize=(8, 6))
@@ -634,7 +635,7 @@ df.corr()['target'].sort_values(ascending=False).plot(kind='bar')  # 降序
 plt.show()
 ```
 
-### 选k个和 target 的相关系数最高的特征
+### 选k个和 target 的相关系数最高的数值型特征
 
 ```python
 k = 10
@@ -647,12 +648,28 @@ k = 10
 np.abs(df.corr()['target']).nlargest(k).index
 ```
 
+### pairplot
+
+sns.pairplot() https://www.jianshu.com/p/6e18d21a4cad
+
+```python
+# 特征间两两相关性图（数值型特征，类别型特征）
+feature_list = ['f1', 'f2', 'f3']
+sns.pairplot(df[feature_list], plot_kws={'alpha': 0.1})
+```
+
+```python
+# 特征与目标相关性图
+sns.pairplot(df, x_vars=['f1', 'f2', 'f3', 'f4', 'f5', 'f6'],
+             y_vars=['t1', 't2', 't3'], plot_kws={'alpha': 0.1})
+```
+
 ### pandas_profiling生成数据报告
 
 ```python
 import pandas_profiling
 pfr = pandas_profiling.ProfileReport(train_df)
-pfr.to_file("example.html")
+pfr.to_file('example.html')
 ```
 
 
@@ -1087,7 +1104,7 @@ df = my_boxcox(df, 'f1')
 # test_df = df[df['is_train'] == 0]
 # test_df.drop(['is_train'], axis=1, inplace=True)
 # 
-# # 对 price 使用 BOX-COX 变换
+# # 对 f1 使用 BOX-COX 变换
 # train_df = my_boxcox(train_df, 'f1')
 # 
 # # 训练集和测试集放在一起，方便构造特征
