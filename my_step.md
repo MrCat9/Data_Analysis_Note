@@ -22,6 +22,7 @@ from scipy import stats
 from scipy import special
 import matplotlib.pyplot as plt
 import seaborn as sns
+sns.set_style('darkgrid')  # 风格设置di
 import missingno as msno
 import xgboost as xgb
 import lightgbm as lgb
@@ -266,6 +267,31 @@ ax.legend()  # 添加图例
 ax.set_title('this is title')
 ```
 
+```python
+# lineplot 会将相同x值下的多个y值的统计量（默认为均值）作为折线图中的点
+sns.lineplot(x='cat_col', y='num_col', hue='cat_col', data=df)
+```
+
+```python
+sns.pointplot(x='cat_col', y='num_col', hue='cat_col', data=df)
+```
+
+### 散点图
+
+```python
+sns.scatterplot(x='num_col', y='num_col', hue='cat_col', data=df)
+
+sns.scatterplot(x='cat_col', y='num_col', hue='cat_col', data=df)
+```
+
+```python
+sns.stripplot(x='cat_col', y='num_col', hue='cat_col', data=df)
+```
+
+```python
+sns.swarmplot(x='cat_col', y='num_col', hue='cat_col', data=df)
+```
+
 ### 柱形图
 
 ```python
@@ -291,8 +317,9 @@ g = g.map(count_plot, 'value')
 ```
 
 ```python
-# 类别型特征的柱形图可视化  # 每个类的t1值的平均值
+# 类别型特征的柱形图可视化  # 每个类的t1值的统计值（默认为平均值）
 def bar_plot(x, y, **kwargs):
+    # sns.barplot(x='cat_col', y='num_col', hue='cat_col', data=df)
     sns.barplot(x=x, y=y)
     x = plt.xticks(rotation=90)
 
@@ -392,7 +419,8 @@ df.boxplot(['f1', 'f2'])
 
 
 def box_plot(x, y, **kwargs):
-    sns.boxplot(x=x, y=y)
+    # sns.boxplot(x=x, y=y)
+    sns.boxenplot(x=x, y=y)
     x = plt.xticks(rotation=90)  # x轴标签逆时针旋转90°
 
 
@@ -415,6 +443,10 @@ target = 't1'
 for c in categorical_feature_list:
     sns.violinplot(x=c, y=target, data=df)
     plt.show()
+```
+
+```python
+# sns.catplot
 ```
 
 ### `groupby`和`agg`
@@ -476,6 +508,13 @@ df.groupby(['f1'])[['t1', 't2', 't3']].count()
 ```
 
 ### 密度分布（数值型特征）
+
+- distplot
+    distribution+plot
+    核密度估计图（kde，kernel density estimation） + 直方图（histogram）
+
+- kdeplot
+    可以画双变量核密度估计图
 
 ```python
 fig, axes = plt.subplots(2, 2)
@@ -618,12 +657,20 @@ def my_sns_regplot(data_df, numeric_feature_list: list, y_label: str):
 my_sns_regplot(df, numeric_feature_list, 'target')
 ```
 
+```python
+# sns.lmplot
+```
+
 ### 数值型特征间两两相关性矩阵热力图
 
 ```python
 corr = df.corr()
 plt.subplots(figsize=(8, 6))
 sns.heatmap(corr, annot=True, vmax=1, cmap='YlGnBu')
+```
+
+```python
+# sns.clustermap
 ```
 
 ### 目标与各个数值型特征的相关性大小
@@ -652,6 +699,8 @@ np.abs(df.corr()['target']).nlargest(k).index
 
 sns.pairplot() https://www.jianshu.com/p/6e18d21a4cad
 
+类似的方法有`jointplot`
+
 ```python
 # 特征间两两相关性图（数值型特征，类别型特征）
 feature_list = ['f1', 'f2', 'f3']
@@ -660,7 +709,7 @@ sns.pairplot(df[feature_list], plot_kws={'alpha': 0.1})
 
 ```python
 # 特征与目标相关性图
-sns.pairplot(df, x_vars=['f1', 'f2', 'f3', 'f4', 'f5', 'f6'],
+sns.pairplot(df, x_vars=['f1', 'f2', 'f3', 'f4', 'f5', 'f6'],  # df.columns.tolist()
              y_vars=['t1', 't2', 't3'], plot_kws={'alpha': 0.1})
 ```
 
@@ -687,7 +736,7 @@ pfr.to_file('example.html')
 
    - 标准化（转换为标准正态分布）；
 
-   - 归一化（抓换到 [0,1] 区间）；
+   - 归一化（转换到 [0,1] 区间）；
 
    - 针对幂律分布，可以采用公式：
 $$
@@ -713,7 +762,7 @@ $$
    - 构造统计量特征，报告计数、求和、比例、标准差等；
    - 时间特征，包括相对时间和绝对时间，节假日，双休日，距离月末/月初的时间，距离最近节假日的时间，时间间隔（出产日期-出售日期）等；
    - 地理信息，包括分箱，分布编码等方法；
-   - 非线性变换，包括 log/ 平方/ 根号等；
+   - 非线性变换，包括 log/平方/根号等；
    - 特征组合，特征交叉；
    - 仁者见仁，智者见智。
 
@@ -778,9 +827,60 @@ $$
 
 # 当然还有很多原因，LightGBM 在改进 XGBoost 时就增加了数据分桶，增强了模型的泛化性
 
-bin_list = [i * 10 for i in range(21)]  # 0--200
-df['f1_bin'] = pd.cut(df['f1'], bin_list, labels=False)
+# bin_list = [i * 10 for i in range(21)]  # 0--200
+bin_list = list(range(0, 201, 10))  # 0--200
+bin_list = [-np.inf] + bin_list + [np.inf]
+df['f1_bin'] = pd.cut(df['f1'], bin_list, labels=False).astype('object')  # 左开右闭 区间  # 0不会被分到第一个箱中，200会被分到最后一个箱中
 df[['f1', 'f1_bin']].head()
+```
+
+```python
+def my_groupby_agg_merge(data_df: pd.DataFrame, groupby_list: list, target_list: list) -> pd.DataFrame:
+    """
+    groupby + agg + merge
+    :param data_df: 
+    :param groupby_list: 类别型特征
+    :param target_list: 数值型特征
+    :return: 
+    """
+    for gc in groupby_list:
+        for tc in target_list:
+            tmp_agged = df.groupby(
+                [gc],
+            )[tc].agg(  # 选取t1列，对t1列进行agg
+                [
+                    'count',
+                    'max',  # 计算组内t1列的最大值
+                    'min',
+                    'sum',
+                    'mean',
+                    'median',
+                    'std',
+                ]
+            ).rename(
+                columns={
+                    'count': f'{gc}_{tc}_count',
+                    'max': f'{gc}_{tc}_max',
+                    'min': f'{gc}_{tc}_min',
+                    'sum': f'{gc}_{tc}_sum',
+                    'mean': f'{gc}_{tc}_mean',
+                    'median': f'{gc}_{tc}_median',
+                    'std': f'{gc}_{tc}_std',
+                }
+            )
+
+            tmp_agged = tmp_agged.reset_index()
+
+            data_df = data_df.merge(tmp_agged, how='left', on=gc)
+            
+    return data_df
+
+
+groupby_list = ['f1', 'f2', 'f3', 'f4']
+target_list = ['t1', 't2']
+
+df = my_groupby_agg_merge(df, groupby_list, target_list)
+df
 ```
 
 ### tsfresh时间序列特征工程工具
@@ -1286,6 +1386,10 @@ plt.xlabel('f1')
 plt.ylabel('t1')
 plt.legend(['True t1','Predicted t1'], loc='upper right')
 plt.show()
+```
+
+```python
+# sns.residplot
 ```
 
 ### 模型保存
