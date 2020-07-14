@@ -806,89 +806,6 @@ $$
 
    如果使用lgb等树模型可以直接空缺，让树自己去优化。
 
-### 特征构造
-
-1. 位移求导 = 速度
-2. 速度求导 = 加速度
-3. 结束时间 - 开始时间 = 持续时间
-4. 时间 -> 绝对时间，相对时间，节假日，周末，距离月末/月初的时间，距离最近节假日的时间，时间间隔（出产日期-出售日期）等
-5. 邮编 -> 省市区县
-6. groupby + merge -> 品牌/地区/… 的 最大值`.max()`/最小值`.min()`/和`.sum()`/均值`.mean()`/中位数`.median()`/标准差`.std()`/…
-7. 数据分桶/数据分箱
-
-```python
-# 数据分桶
-# 为什么要做数据分桶
-# 1. 离散后稀疏向量内积乘法运算速度更快，计算结果也方便存储，容易扩展；
-# 2. 离散后的特征对异常值更具鲁棒性，如 age>30 为 1 否则为 0，对于年龄为 200 的也不会对模型造成很大的干扰；
-# 3. LR 属于广义线性模型，表达能力有限，经过离散化后，每个变量有单独的权重，这相当于引入了非线性，能够提升模型的表达能力，加大拟合；
-# 4. 离散后特征可以进行特征交叉，提升表达能力，由 M+N 个变量变成 M*N 个变量，进一步引入非线形，提升了表达能力；
-# 5. 特征离散后模型更稳定，如用户年龄区间，不会因为用户年龄长了一岁就变化
-
-# 当然还有很多原因，LightGBM 在改进 XGBoost 时就增加了数据分桶，增强了模型的泛化性
-
-# bin_list = [i * 10 for i in range(21)]  # 0--200
-bin_list = list(range(0, 201, 10))  # 0--200
-bin_list = [-np.inf] + bin_list + [np.inf]
-df['f1_bin'] = pd.cut(df['f1'], bin_list, labels=False).astype('object')  # 左开右闭 区间  # 0不会被分到第一个箱中，200会被分到最后一个箱中
-df[['f1', 'f1_bin']].head()
-```
-
-```python
-def my_groupby_agg_merge(data_df: pd.DataFrame, groupby_list: list, target_list: list) -> pd.DataFrame:
-    """
-    groupby + agg + merge
-    :param data_df: 
-    :param groupby_list: 类别型特征
-    :param target_list: 数值型特征
-    :return: 
-    """
-    for gc in groupby_list:
-        for tc in target_list:
-            tmp_agged = df.groupby(
-                [gc],
-            )[tc].agg(  # 选取t1列，对t1列进行agg
-                [
-                    'count',
-                    'max',  # 计算组内t1列的最大值
-                    'min',
-                    'sum',
-                    'mean',
-                    'median',
-                    'std',
-                ]
-            ).rename(
-                columns={
-                    'count': f'{gc}_{tc}_count',
-                    'max': f'{gc}_{tc}_max',
-                    'min': f'{gc}_{tc}_min',
-                    'sum': f'{gc}_{tc}_sum',
-                    'mean': f'{gc}_{tc}_mean',
-                    'median': f'{gc}_{tc}_median',
-                    'std': f'{gc}_{tc}_std',
-                }
-            )
-
-            tmp_agged = tmp_agged.reset_index()
-
-            data_df = data_df.merge(tmp_agged, how='left', on=gc)
-            
-    return data_df
-
-
-groupby_list = ['f1', 'f2', 'f3', 'f4']
-target_list = ['t1', 't2']
-
-df = my_groupby_agg_merge(df, groupby_list, target_list)
-df
-```
-
-### tsfresh时间序列特征工程工具
-
-```python
-# tsfresh -> 时间序列特征工程工具
-```
-
 ### 选取没有空值的行
 
 ```python
@@ -922,10 +839,10 @@ df_f3 = df.pop('f3')  # 删除df的f3列，f3列的值返回给df_f3
 df.loc[:, 'col_a'].replace(to_replace=np.nan, value=df.loc[:, 'col_b'], inplace=True)
 ```
 
-###  删除异常值
+### 删除异常值
 
 ```python
-# 去掉3个标准差以外数据
+# 去掉3个标准差以外数据  # 刪除整行
 mask = np.abs(df['t1'] - df['t1'].mean()) <= (3 * df['t1'].std())
 df2 = df[mask]
 df3 = df[~mask]
@@ -935,6 +852,7 @@ df3 = df[~mask]
 def outliers_proc(data, col_name, scale=3):
     """
     用于清洗异常值，默认用 box_plot(scale=3)进行清洗
+    可以删除整行，也可以将异常值替换成NaN
     :param data: 接收 pandas 数据格式
     :param col_name: pandas 列名
     :param scale: 尺度
@@ -955,29 +873,33 @@ def outliers_proc(data, col_name, scale=3):
         return (rule_low, rule_up), (val_low, val_up)
 
     data_n = data.copy()
-    data_series = data_n[col_name]
+    data_series = data_n[col_name].copy()
     rule, value = box_plot_outliers(data_series, box_scale=scale)
     index = data_series.index[rule[0] | rule[1]]  # 异常值的索引
-    print("Delete number is: {}".format(len(index)))
-    data_n = data_n.drop(index)
-    data_n.reset_index(drop=True, inplace=True)
+    print("Outliers number is: {}".format(len(index)))
+    # data_n = data_n.drop(index)  # 删除异常值
+    # data_n.reset_index(drop=True, inplace=True)
+    data_n.loc[index, col_name] = np.nan  # 将异常值替换为空
     print("Now column number is: {}".format(data_n.shape[0]))
     index_low = data_series.index[rule[0]]
     outliers = data_series.iloc[index_low]
     print("Description of data less than the lower bound is:")
-    print(pd.Series(outliers).describe())
+    print(outliers.describe())
     index_up = data_series.index[rule[1]]
     outliers = data_series.iloc[index_up]
     print("Description of data larger than the upper bound is:")
-    print(pd.Series(outliers).describe())
+    print(outliers.describe())
 
     fig, ax = plt.subplots(1, 2, figsize=(10, 7))
-    sns.boxplot(y=data[col_name], data=data, palette="Set1", ax=ax[0])
-    sns.boxplot(y=data_n[col_name], data=data_n, palette="Set1", ax=ax[1])
+    # sns.boxplot(y=data[col_name], data=data, palette="Set1", ax=ax[0])
+    # sns.boxplot(y=data_n[col_name], data=data_n, palette="Set1", ax=ax[1])
+    sns.boxenplot(y=data[col_name], data=data, palette="Set1", ax=ax[0])
+    sns.boxenplot(y=data_n[col_name], data=data_n, palette="Set1", ax=ax[1])
+    
     return data_n
 
 
-train_df = outliers_proc(train_df, 'power', scale=3)
+train_df = outliers_proc(train_df, 'f1', scale=3)
 ```
 
 ### 不是正态分布
@@ -1213,6 +1135,89 @@ df = my_boxcox(df, 'f1')
 # df = pd.concat([train_df, test_df], ignore_index=True)
 ```
 
+### 特征构造
+
+1. 位移求导 = 速度
+2. 速度求导 = 加速度
+3. 结束时间 - 开始时间 = 持续时间
+4. 时间 -> 绝对时间，相对时间，节假日，周末，距离月末/月初的时间，距离最近节假日的时间，时间间隔（出产日期-出售日期）等
+5. 邮编 -> 省市区县
+6. groupby + merge -> 品牌/地区/… 的 最大值`.max()`/最小值`.min()`/和`.sum()`/均值`.mean()`/中位数`.median()`/标准差`.std()`/…
+7. 数据分桶/数据分箱
+
+```python
+# 数据分桶
+# 为什么要做数据分桶
+# 1. 离散后稀疏向量内积乘法运算速度更快，计算结果也方便存储，容易扩展；
+# 2. 离散后的特征对异常值更具鲁棒性，如 age>30 为 1 否则为 0，对于年龄为 200 的也不会对模型造成很大的干扰；
+# 3. LR 属于广义线性模型，表达能力有限，经过离散化后，每个变量有单独的权重，这相当于引入了非线性，能够提升模型的表达能力，加大拟合；
+# 4. 离散后特征可以进行特征交叉，提升表达能力，由 M+N 个变量变成 M*N 个变量，进一步引入非线形，提升了表达能力；
+# 5. 特征离散后模型更稳定，如用户年龄区间，不会因为用户年龄长了一岁就变化
+
+# 当然还有很多原因，LightGBM 在改进 XGBoost 时就增加了数据分桶，增强了模型的泛化性
+
+# bin_list = [i * 10 for i in range(21)]  # 0--200
+bin_list = list(range(0, 201, 10))  # 0--200
+bin_list = [-np.inf] + bin_list + [np.inf]
+df['f1_bin'] = pd.cut(df['f1'], bin_list, labels=False).astype('object')  # 左开右闭 区间  # 0不会被分到第一个箱中，200会被分到最后一个箱中
+df[['f1', 'f1_bin']].head()
+```
+
+```python
+def my_groupby_agg_merge(data_df: pd.DataFrame, groupby_list: list, target_list: list) -> pd.DataFrame:
+    """
+    groupby + agg + merge
+    :param data_df: 
+    :param groupby_list: 类别型特征
+    :param target_list: 数值型特征
+    :return: 
+    """
+    for gc in groupby_list:
+        for tc in target_list:
+            tmp_agged = df.groupby(
+                [gc],
+            )[tc].agg(  # 选取t1列，对t1列进行agg
+                [
+                    'count',
+                    'max',  # 计算组内t1列的最大值
+                    'min',
+                    'sum',
+                    'mean',
+                    'median',
+                    'std',
+                ]
+            ).rename(
+                columns={
+                    'count': f'{gc}_{tc}_count',
+                    'max': f'{gc}_{tc}_max',
+                    'min': f'{gc}_{tc}_min',
+                    'sum': f'{gc}_{tc}_sum',
+                    'mean': f'{gc}_{tc}_mean',
+                    'median': f'{gc}_{tc}_median',
+                    'std': f'{gc}_{tc}_std',
+                }
+            )
+
+            tmp_agged = tmp_agged.reset_index()
+
+            data_df = data_df.merge(tmp_agged, how='left', on=gc)
+            
+    return data_df
+
+
+groupby_list = ['f1', 'f2', 'f3', 'f4']
+target_list = ['t1', 't2']
+
+df = my_groupby_agg_merge(df, groupby_list, target_list)
+df
+```
+
+### tsfresh时间序列特征工程工具
+
+```python
+# tsfresh -> 时间序列特征工程工具
+```
+
 ### 特征编码
 
 ```python
@@ -1222,24 +1227,6 @@ for col in feature_col_name_list:
         df[col] = pd.factorize(dfCate[col])[0]
     else:
         df = pd.get_dummies(df, columns=[col])
-```
-
-### 特征筛选
-
-- 过滤式（filter）：先对数据进行特征选择，然后在训练学习器，常见的方法有 Relief/方差选择发/相关系数法/卡方检验法/互信息法；
-- 包裹式（wrapper）：直接把最终将要使用的学习器的性能作为特征子集的评价准则，常见方法有 LVM（Las Vegas Wrapper） ；
-- 嵌入式（embedding）：结合过滤式和包裹式，学习器训练过程中自动进行了特征选择，常见的有 lasso 回归；
-
-1. 相关性`df.corr()`
-2. mlxtend`mlxtend.feature_selection`
-3. 
-
-### 降维
-
-- PCA/ LDA/ ICA
-
-```python
-from sklearn.decomposition import PCA, SparsePCA, FastICA, FactorAnalysis
 ```
 
 ### 减少df内存占用
@@ -1288,6 +1275,24 @@ def reduce_mem_usage(df):
     print('Memory usage after optimization is: {:.2f} MB'.format(end_mem))
     print('Decreased by {:.1f}%'.format(100 * (start_mem - end_mem) / start_mem))
     return df
+```
+
+### 特征筛选
+
+- 过滤式（filter）：先对数据进行特征选择，然后在训练学习器，常见的方法有 Relief/方差选择发/相关系数法/卡方检验法/互信息法；
+- 包裹式（wrapper）：直接把最终将要使用的学习器的性能作为特征子集的评价准则，常见方法有 LVM（Las Vegas Wrapper） ；
+- 嵌入式（embedding）：结合过滤式和包裹式，学习器训练过程中自动进行了特征选择，常见的有 lasso 回归；
+
+1. 相关性`df.corr()`
+2. mlxtend`mlxtend.feature_selection`
+3. 
+
+### 降维
+
+- PCA/ LDA/ ICA
+
+```python
+from sklearn.decomposition import PCA, SparsePCA, FastICA, FactorAnalysis
 ```
 
 
