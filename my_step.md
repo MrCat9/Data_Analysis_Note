@@ -839,6 +839,12 @@ df_f3 = df.pop('f3')  # 删除df的f3列，f3列的值返回给df_f3
 df.loc[:, 'col_a'].replace(to_replace=np.nan, value=df.loc[:, 'col_b'], inplace=True)
 ```
 
+### 空值填充
+
+```python
+# sklearn.impute
+```
+
 ### 删除异常值
 
 ```python
@@ -982,6 +988,18 @@ def my_log(_df, _c: str):
 df = my_log(df, 'f1')
 ```
 
+```python
+# 正变换
+# y=log(x+1)
+x1 = 3600.0
+y1 = np.log(x1 + 1)  # 8.188966863648876
+
+# 逆变换
+# y=exp(x)-1
+x2 = 8.188966863648876
+y2 = np.exp(x2) - 1  # 3600.000000000002
+```
+
 #### BOX-COX
 
 https://blog.csdn.net/Jim_Sun_Jing/article/details/100665967
@@ -1041,7 +1059,7 @@ print(f"Kurtosis of target: {train_df['target_boxcox'].kurt()}")
 
 ```python
 # 进行Box-Cox变换
-# scipyspecial.boxcox1p
+# scipy.special.boxcox1p
 boxcox_lambda = stats.boxcox_normmax(train_df['target'] + 1)  # 寻找最佳变换参数λ
 print('boxcox_lambda:', boxcox_lambda)
 train_df['target_boxcox'] = special.boxcox1p(train_df['target'], boxcox_lambda)
@@ -1092,7 +1110,7 @@ def my_boxcox(_df, _c: str):
     print(f"Kurtosis of {_c}: {_df[_c].kurt()}")
 
     # ---------------- 进行Box-Cox变换 ----------------
-    # scipyspecial.boxcox1p
+    # scipy.special.boxcox1p
     boxcox_lambda = stats.boxcox_normmax(_df[_c] + 1)  # 寻找最佳变换参数λ
     print(_c, 'boxcox_lambda:', boxcox_lambda)
     _df[new_c] = special.boxcox1p(_df[_c], boxcox_lambda)
@@ -1133,6 +1151,21 @@ df = my_boxcox(df, 'f1')
 # train_df['is_train'] = 1
 # test_df['is_train'] = 0
 # df = pd.concat([train_df, test_df], ignore_index=True)
+```
+
+```python
+# 正变换
+# 进行Box-Cox变换
+# scipy.special.boxcox1p
+boxcox_lambda = stats.boxcox_normmax(train_df['target'] + 1)  # 寻找最佳变换参数λ
+print('boxcox_lambda:', boxcox_lambda)  # 0.08127698855857035
+x1 = 3600.0
+y1 = special.boxcox1p(x1, boxcox_lambda)  # 11.634388741942136
+
+# 逆变换
+# special.inv_boxcox1p
+x2 = 11.634388741942136
+y2 = special.inv_boxcox1p(x2, boxcox_lambda)  # 3600.000000000002
 ```
 
 ### 特征构造
@@ -1420,8 +1453,6 @@ pred_test_y = model.predict(test_X)
 - 贝叶斯调参bayes_opt https://www.cnblogs.com/yangruiGB2312/p/9374377.html
 
 考虑使用`TPOT自动调参`选定模型和大致的参数，再用`bayes_opt贝叶斯调参`，`GridSearchCV调参`进一步优化参数。
-
-
 
 #### GridSearchCV调参
 
