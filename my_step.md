@@ -1720,6 +1720,70 @@ mean_absolute_error(testing_target, results)
 
 ### 贝叶斯调参
 
+#### 回归
+
+```python
+from bayes_opt import BayesianOptimization
+from lightgbm import LGBMRegressor
+
+
+def my_bayes_cv(num_leaves, max_depth, subsample, min_child_samples):
+    val = cross_val_score(
+        LGBMRegressor(
+            objective='regression_l1',
+            num_leaves=int(num_leaves),
+            max_depth=int(max_depth),
+            subsample=subsample,
+            min_child_samples=int(min_child_samples)
+        ),
+        X=train_df[select_feature_list],
+        y=train_df['target1_boxcox'],
+        verbose=0,
+        cv=5,
+        scoring=make_scorer(mean_absolute_error)
+    ).mean()
+    return -val  # mae越小越好，而贝叶斯调参是求解最大值，所以取负
+
+
+# 实例化一个bayes优化对象
+lgbmr_bo = BayesianOptimization(
+    my_bayes_cv,
+    {
+        'num_leaves': (2, 100),
+        'max_depth': (2, 100),
+        'subsample': (0.1, 1),
+        'min_child_samples': (2, 100)
+    }
+)
+
+
+# 运行bayes优化
+lgbmr_bo.maximize()
+
+
+# 输出最佳结果
+lgbmr_bo.max
+
+# 使用调参结果建模
+my_lgbmr = LGBMRegressor(max_depth=27,
+                         min_child_samples=2,
+                         num_leaves=100,
+                         subsample=1.0)
+my_lgbmr.fit(training_features, training_target)
+# training_features, testing_features, training_target, testing_target
+
+# 预测
+testing_pre = my_lgbmr.predict(testing_features)
+
+# 评估
+mean_absolute_error(testing_target, testing_pre)
+
+# 模型评估
+np.mean(cross_val_score(my_lgbmr, X=training_features, y=training_target, verbose=0, cv=5, scoring=make_scorer(mean_absolute_error)))
+```
+
+#### 分类
+
 ```python
 # https://www.cnblogs.com/yangruiGB2312/p/9374377.html
 
@@ -2012,7 +2076,7 @@ scores
 
 ```python
 # 回归
-np.mean(cross_val_score(model, X=train_X, y=train_y_ln, verbose=0, cv=5, scoring = make_scorer(mean_absolute_error)))
+np.mean(cross_val_score(model, X=train_X, y=train_y_ln, verbose=0, cv=5, scoring=make_scorer(mean_absolute_error)))
 ```
 
 ```python
