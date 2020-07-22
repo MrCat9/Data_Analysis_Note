@@ -1727,14 +1727,19 @@ from bayes_opt import BayesianOptimization
 from lightgbm import LGBMRegressor
 
 
-def my_bayes_cv(num_leaves, max_depth, subsample, min_child_samples):
+def my_bayes_cv4lgbmr(num_leaves, max_depth, n_estimators, min_child_samples, subsample):
     val = cross_val_score(
         LGBMRegressor(
-            objective='regression_l1',
             num_leaves=int(num_leaves),
             max_depth=int(max_depth),
+            n_estimators=int(n_estimators),
+            min_child_samples=int(min_child_samples),
             subsample=subsample,
-            min_child_samples=int(min_child_samples)
+            
+            objective='regression_l1',
+            learning_rate=0.01,
+            random_state=None,
+            n_jobs=-1,
         ),
         X=train_df[select_feature_list],
         y=train_df['target1_boxcox'],
@@ -1747,12 +1752,13 @@ def my_bayes_cv(num_leaves, max_depth, subsample, min_child_samples):
 
 # 实例化一个bayes优化对象
 lgbmr_bo = BayesianOptimization(
-    my_bayes_cv,
+    my_bayes_cv4lgbmr,
     {
-        'num_leaves': (2, 100),
-        'max_depth': (2, 100),
+        'num_leaves': (2, 1000),
+        'max_depth': (2, 1000),
+        'n_estimators': (2, 1000),
+        'min_child_samples': (2, 200),
         'subsample': (0.1, 1),
-        'min_child_samples': (2, 100)
     }
 )
 
@@ -1765,10 +1771,18 @@ lgbmr_bo.maximize()
 lgbmr_bo.max
 
 # 使用调参结果建模
-my_lgbmr = LGBMRegressor(max_depth=27,
-                         min_child_samples=2,
-                         num_leaves=100,
-                         subsample=1.0)
+my_lgbmr = LGBMRegressor(
+    max_depth=556,
+    min_child_samples=2,
+    n_estimators=1000,
+    num_leaves=751,
+    subsample=1.0,
+
+    objective='regression_l1',
+    learning_rate=0.01,
+    random_state=None,
+    n_jobs=-1,
+)
 my_lgbmr.fit(training_features, training_target)
 # training_features, testing_features, training_target, testing_target
 
