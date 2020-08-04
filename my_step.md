@@ -80,6 +80,11 @@ df.tail()
 
 ```python
 df.duplicated()
+
+df.duplicated().value_counts()
+
+# 取出不重复的记录
+df = df[~df.duplicated()]
 ```
 
 ### 获取数据的描述统计信息
