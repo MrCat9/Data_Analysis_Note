@@ -496,6 +496,10 @@ df.groupby(
         'min',
         'count',
         'min',  # 会输出两列min
+        't1_mean': 'mean',
+        't1_nunique': 'nunique',  # 输出t1有几个不重复的元素，输出位int数字
+        't1_q1': lambda x: np.quantile(x, 0.10),
+        't1_q2': lambda x: np.quantile(x, 0.20),
     ]
 ).rename(
     columns={
