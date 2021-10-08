@@ -17,6 +17,7 @@ import warnings
 warnings.filterwarnings('ignore')  # 忽略警告提示
 import pandas as pd
 pd.set_option('display.max_columns', None)  # 设置查看列不省略
+# pd.set_option('display.max_rows', None)  # 设置查看行不省略
 import numpy as np
 from scipy import stats
 from scipy import special
