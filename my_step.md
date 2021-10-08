@@ -255,6 +255,16 @@ df.sort_values(by=['xx_col'], na_position='first')
 df['f1'].value_counts()
 ```
 
+### 条件筛选
+
+```python
+mask_f1_list = ['a', 'b', 'c']
+# where in
+df[df['f1'].isin(mask_f1_list)]
+# where not in
+df[-df['f1'].isin(mask_f1_list)]
+```
+
 ### 折线图
 
 可以考虑将t1随日变化的折线图和t1随月变化的折线图画在一张图里。
