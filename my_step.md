@@ -22,6 +22,8 @@ import numpy as np
 from scipy import stats
 from scipy import special
 import matplotlib.pyplot as plt
+plt.rcParams['font.sans-serif'] = ['SimHei']  # 用来正常显示中文标签
+plt.rcParams['axes.unicode_minus'] = False  # 用来正常显示负号
 import seaborn as sns
 sns.set_style('darkgrid')  # 风格设置di
 import missingno as msno
