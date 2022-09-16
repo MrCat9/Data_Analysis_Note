@@ -54,6 +54,15 @@ test_df = df[df['is_train'] == 0]
 test_df.drop(['is_train'], axis=1, inplace=True)
 ```
 
+### 去除文本列中数据两端的空白
+
+```python
+for _col in df.columns:
+    if df[_col].dtype == 'object':
+        print(_col)
+        df[_col] = df[_col].str.strip()
+```
+
 
 
 
@@ -854,6 +863,10 @@ df.drop(['f1'], axis=1, inplace=True)  # 删除f1列
 del df['f2']  # 删除f2列
 df_f3 = df.pop('f3')  # 删除df的f3列，f3列的值返回给df_f3
 ```
+
+### 替换
+
+[df_replace](https://github.com/MrCat9/Pandas_Note/blob/master/df_replace/df_replace.ipynb)
 
 ### 把 col_a 中的空值用 col_b 的值替换（df的修改操作）
 
