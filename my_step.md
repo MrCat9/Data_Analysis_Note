@@ -208,6 +208,8 @@ sub_categorical_feature_list = [c for c in categorical_feature_list if c not in 
 
 ### 日期时间处理
 
+#### 日期时间拆分（年月日时分秒星期）
+
 ```python
 datetime_col_name = 'datetime_col'
 
@@ -226,6 +228,62 @@ df[datetime_col_name + '_minute'] = df[datetime_col_name].dt.minute.astype('obje
 df[datetime_col_name + '_second'] = df[datetime_col_name].dt.second.astype('object')  # 秒
 
 df[datetime_col_name + '_weekday'] = df[datetime_col_name].dt.weekday.astype('object')  # 星期  # 0--6
+```
+
+#### 时间差（时间跨度）
+
+```python
+# pd.to_datetime(datetime.date.today())-pd.to_datetime(df['datetime_col'])
+pd.to_datetime(datetime.datetime.fromisoformat('2022-01-01')) - pd.to_datetime(df['datetime_col'])
+# 0        993 days
+# 1       1123 days
+# 2       1081 days
+# 3       1212 days
+# 4       1156 days
+#            ...   
+# 12101   1191 days
+# 12102   1226 days
+# 12103   1064 days
+# 12104    896 days
+# 12105   1226 days
+# Name: datetime_col, Length: 12106, dtype: timedelta64[ns]
+```
+
+```python
+(pd.to_datetime(datetime.datetime.fromisoformat('2022-01-01')) - pd.to_datetime(df['datetime_col'])) > datetime.timedelta(days=1000)
+# 0        False
+# 1         True
+# 2         True
+# 3         True
+# 4         True
+#          ...  
+# 12101     True
+# 12102     True
+# 12103     True
+# 12104    False
+# 12105     True
+# Name: datetime_col, Length: 12106, dtype: bool
+```
+
+```python
+# 字符串转datetime
+
+?datetime.datetime.fromisoformat
+# Docstring: string -> datetime from datetime.isoformat() output
+# Type:      builtin_function_or_method
+
+datetime.datetime.strptime('2022-01-01','%Y-%m-%d')  # '%Y-%m-%d %H:%M:%S'
+# datetime.datetime(2022, 1, 1, 0, 0)
+
+?datetime.datetime.strptime
+# Docstring: string, format -> new datetime parsed from a string (like time.strptime()).
+# Type:      builtin_function_or_method
+```
+
+### tsfresh时间序列特征工程工具
+
+```python
+# tsfresh -> 时间序列特征工程工具
 ```
 
 ### 空值统计
@@ -1280,21 +1338,19 @@ df = my_groupby_agg_merge(df, groupby_list, target_list)
 df
 ```
 
-### tsfresh时间序列特征工程工具
-
-```python
-# tsfresh -> 时间序列特征工程工具
-```
-
 ### 特征编码
+
+[类别变量编码](https://github.com/MrCat9/Data_Analysis_Note/blob/master/category_encoding/category_encoding.ipynb)
+
+> 标签编码（Label Encoding）、独热编码（One-Hot Encoding）、序号编码（Ordinal Encoding）、二进制编码（Binary Encoding）、......
 
 ```python
 feature_col_name_list = ['f1', 'f2', 'f3', 'f4']
 for col in feature_col_name_list:
     if df[col].nunique() == 2:
-        df[col] = pd.factorize(dfCate[col])[0]
+        df[col] = pd.factorize(df[col])[0]  # 标签编码（Label Encoding）
     else:
-        df = pd.get_dummies(df, columns=[col])
+        df = pd.get_dummies(df, columns=[col])  # 独热编码（One-Hot Encoding）
 ```
 
 ### 减少df内存占用
