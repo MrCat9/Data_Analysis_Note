@@ -118,7 +118,14 @@ def statistics_info(data):
 statistics_info(df['t1'])
 ```
 
+```python
+q1 = df['f1'].quantile(q=0.25)  # 第一四分位数 (Q1)
+q2 = df['f1'].quantile(q=0.5)  # 第二四分位数 (Q2)  # 中位数
+q3 = df['f1'].quantile(q=0.75)  # 第三四分位数 (Q3)
+```
+
 #### 第一四分位数
+
 $$
 Q1=(n-1)*0.25+1
 $$
