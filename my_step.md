@@ -12,21 +12,22 @@
 ```python
 # -*- coding: utf-8 -*-
 
-
+import datetime
 import warnings
 warnings.filterwarnings('ignore')  # 忽略警告提示
+import datetime
 import pandas as pd
 pd.set_option('display.max_columns', None)  # 设置查看列不省略
 # pd.set_option('display.max_rows', None)  # 设置查看行不省略
 import numpy as np
 from scipy import stats
 from scipy import special
-import matplotlib.pyplot as plt
-plt.rcParams['font.sans-serif'] = ['SimHei']  # 用来正常显示中文标签
-plt.rcParams['axes.unicode_minus'] = False  # 用来正常显示负号
 import seaborn as sns
-sns.set_style('darkgrid')  # 风格设置di
+sns.set_style('darkgrid')  # 风格设置
 import missingno as msno
+import matplotlib.pyplot as plt
+plt.rcParams['font.sans-serif'] = ['SimHei']  # 
+plt.rcParams['axes.unicode_minus'] = False 
 import xgboost as xgb
 import lightgbm as lgb
 
@@ -218,7 +219,9 @@ sub_categorical_feature_list = [c for c in categorical_feature_list if c not in 
 #### 日期时间拆分（年月日时分秒星期）
 
 ```python
-datetime_col_name = 'datetime_col'
+tmp_col_name = 'f1'
+
+datetime_col_name = f'{tmp_col_name}_datetime'
 
 df[datetime_col_name] = pd.to_datetime(df[datetime_col_name], format='%Y-%m-%d %H:%M:%S')  # 列数据类型转换
 
