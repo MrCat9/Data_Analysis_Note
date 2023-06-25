@@ -945,6 +945,14 @@ df.loc[:, 'col_a'].replace(to_replace=np.nan, value=df.loc[:, 'col_b'], inplace=
 ### 空值填充
 
 ```python
+# DataFrame.interpolate
+# interpolate默认线性填充
+# bfill为向前填充，ffill为向后填充
+# 下行代码实现中间空值取上下平均值填充；头部空值取后面非空值向前填充；尾部空值取前面非空值向后填充
+df[feature_col_list] = df[feature_col_list].interpolate().bfill()
+```
+
+```python
 # sklearn.impute
 ```
 
