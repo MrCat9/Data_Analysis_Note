@@ -1019,6 +1019,18 @@ def outliers_proc(data, col_name, scale=3):
 train_df = outliers_proc(train_df, 'f1', scale=3)
 ```
 
+### 归一化和标准化
+
+```python
+df['f1'] = ((df['f1'] - np.min(df['f1'])) / (np.max(df['f1']) - np.min(df['f1'])))  # 归一化
+
+# 归一化
+df = (df - np.min(df)) / (np.max(df) - np.min(df))
+
+# Z-score标准化
+df = (df - df.mean()) / (df.std())
+```
+
 ### 不是正态分布
 
 数据波动大的话容易产生过拟合，所以对数据进行变换，使得数据相对稳定。
