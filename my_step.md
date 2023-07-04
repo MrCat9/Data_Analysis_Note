@@ -161,11 +161,11 @@ df[['str_col']].astype('float64')
 ```
 
 ```python
-df['int64_col'] = df['int64_col'].astype('object')
+df['int64_col'] = df['int64_col'].astype(str)
 ```
 
 ```python
-df[['int64_col1', 'int64_col2']] = df[['int64_col1', 'int64_col2']].astype('object')
+df[['int64_col1', 'int64_col2']] = df[['int64_col1', 'int64_col2']].astype(str)
 ```
 
 ### 强制类型转换 
