@@ -290,6 +290,12 @@ datetime.datetime.strptime('2022-01-01','%Y-%m-%d')  # '%Y-%m-%d %H:%M:%S'
 # Type:      builtin_function_or_method
 ```
 
+### 日期平移
+
+```python
+pd.DateOffset
+```
+
 ### tsfresh时间序列特征工程工具
 
 ```python
