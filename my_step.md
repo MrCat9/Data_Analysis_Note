@@ -826,7 +826,17 @@ pfr = pandas_profiling.ProfileReport(train_df)
 pfr.to_file('example.html')
 ```
 
+### [pyecharts](https://github.com/MrCat9/Echarts_Note)
 
+> 3d柱状图，桑基图（pyecharts.charts.Sankey）
+
+### pygwalker可视化数据探索
+
+> [**PyGWalker**](https://github.com/Kanaries/pygwalker)是个在Jupyter Notebook环境中运行的可视化探索式分析工具，仅一条命令即可生成一个可交互的图形界面，以类似Tableau/PowerBI的方式，通过拖拽字段进行数据分析。
+>
+> 
+>
+> [物流数据pygwalker](https://github.com/MrCat9/Data_Analysis_Note/blob/master/logistics_data_pygwalker.ipynb)
 
 
 ## 特征工程
