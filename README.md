@@ -26,9 +26,13 @@
 
     [Python综合评价模型（八）熵权法](https://blog.csdn.net/Yif18/article/details/130009774)
 
-4. 
+4. A/B测试_假设检验
+
+    [一文入门A/B测试（含流程、原理及示例）](https://zhuanlan.zhihu.com/p/68019926?utm_id=0)
 
 5. 
+
+6. 
 
 
 
